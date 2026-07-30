@@ -1,0 +1,12 @@
+[access_closet_1]
+10.10.1.21
+10.10.1.22
+10.10.1.23
+10.10.1.24
+
+[access_closet_1:vars]
+ansible_user=admin
+ansible_password=" "
+ansible_network_os=community.network.exos
+ansible_ssl_verify=false
+ 

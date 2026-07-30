@@ -1,0 +1,22 @@
+---
+- name: Automate Local User Creation for Access Closet 1
+  hosts: access_closet_1
+  gather_facts: false
+  connection: network_cli
+
+  tasks:
+    - name: Create the Local-Admin account with Read/Write Access
+      ansible.netcommon.cli_command:
+        command: "create user Local-Admin"
+
+    - name: Configure the Local-Admin password
+      ansible.netcommon.cli_command:
+        command: "configure user Local-Admin password WGU123"
+
+    - name: Elevate Local-Admin to Read/Write Level
+      ansible.netcommon.cli_command:
+        command: "configure user Local-Admin access-profile admin"
+
+    - name: Save configuration to NVRAM
+      ansible.netcommon.cli_command:
+        command: "save configuration"
