@@ -6,7 +6,11 @@
 
 [access_closet_1:vars]
 ansible_user=admin
-ansible_password=" "
+ansible_password="" # " "
+ansible_connection=ansible.netcommon.network_cli
 ansible_network_os=community.network.exos
 ansible_ssl_verify=false
- 
+
+# Force Ansible's Paramiko library to send empty authentication packets cleanly
+ansible_paramiko_auth_timeout=60
+ansible_paramiko_look_for_keys=false
