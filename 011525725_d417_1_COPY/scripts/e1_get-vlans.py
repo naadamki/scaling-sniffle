@@ -56,7 +56,7 @@ def get_vlans(group_name):
                 print(f"- Obtaining configurations for {hostname}.")
 
                 # Gather the current full setup details from the device
-                command_output = device_connection.send_command("show configuration")
+                command_output = device_connection.send_command("show vlan")
 
                 # Format a clean header block to separate different switch logs inside the text file
                 border = "=" * 50
