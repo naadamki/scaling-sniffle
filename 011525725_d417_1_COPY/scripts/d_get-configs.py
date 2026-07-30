@@ -59,10 +59,10 @@ def get_configurations(group_name):
                 # Capture the switch's command prompt and strip out trailing characters
                 hostname = device_connection.find_prompt().strip(" #>").strip()
                 print(f"- Connected to {hostname} ({device_ip}).")
-                print(f"- Obtaining VLAN configurations for {hostname}.")
+                print(f"- Obtaining configurations for {hostname}.")
 
                 # Run the command to pull the switch configuration state
-                command_output = device_connection.send_command("show vlan")
+                command_output = device_connection.send_command("show configuration")
 
                 # Dynamically name the backup file using the switch's unique hostname
                 individual_file = os.path.join(SCRIPT_DIR, f"{hostname}_config.txt")
