@@ -53,7 +53,7 @@ def get_vlans(group_name):
             with ConnectHandler(**params) as device_connection:
                 hostname = device_connection.find_prompt().strip(" #>").strip()
                 print(f"- Connected to {hostname} ({device_ip}).")
-                print(f"- Obtaining configurations for {hostname}.")
+                print(f"- Obtaining VLAN configurations for {hostname}.")
 
                 # Gather the current VLAN configuration
                 command_output = device_connection.send_command("show vlan")

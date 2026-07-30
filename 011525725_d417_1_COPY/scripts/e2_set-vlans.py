@@ -73,18 +73,9 @@ def set_vlans(group_name):
                     configurations_set_output += device_connection.send_command(cmd) + "\n"
 
                 # Commit our changes permanently to the primary configuration block
-                print("- Saving running configuration to primary partition...")
-
-                # Send the save command and catch the interactive confirmation prompt
-                save_prompt = device_connection.send_command_timing("save configuration primary")
-
-                # If the switch asks if we want to overwrite the existing file, reply 'yes'
-                if "exists" in save_prompt.lower() or "overwrite" in save_prompt.lower():
-                    configurations_save_output = save_prompt + "\n" + device_connection.send_command_timing("yes")
-                else:
-                    # If it didn't ask a question and just saved instantly, record the initial output
-                    configurations_save_output = save_prompt
-
+                # The 'cancel-dir' flag tells EXOS to overwrite the config instantly without an interactive y/n prompt
+                print("- Saving running configuration cleanly to primary partition...")
+                configurations_save_output = device_connection.send_command("save configuration primary cancel-dir")
 
                 # Capture a quick verification snapshot to confirm the new VLAN states
                 print(f"- Verifying {hostname} VLAN configuration state...")
