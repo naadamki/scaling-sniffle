@@ -5,13 +5,13 @@ import yaml
 import argparse
 from netmiko import ConnectHandler
 
-# Define working directory and output paths (saving everything to the same directory)
+# Define our environment and establish where the configuration log results will save
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MASTER_FILE = os.path.join(SCRIPT_DIR, "e2_set-vlans_output.txt")
 
 
 def load_inventory(group_name, filename="inventory.yaml"):
-    """Loads and validates the YAML inventory file for the specified group."""
+    """Reads our YAML inventory file and grabs the specific switch group we ask for."""
     filepath = os.path.join(SCRIPT_DIR, filename)
     
     if not os.path.exists(filepath):
@@ -32,18 +32,18 @@ def load_inventory(group_name, filename="inventory.yaml"):
 
 
 def set_vlans(group_name):
-    """Connects to devices in a group and configures specified VLAN settings."""
+    """Connects to the devices to dynamically build and push the required VLAN configuration changes."""
     devices = load_inventory(group_name)
     print(f"Found {len(devices)} devices in {group_name}.")
 
     for device in devices:
+        # Pull out our specific target data from the inventory file dictionary
         device_ip = device["host"]
         device_type = device["device_type"]
         vlan_name = device["vlan_name"]
         vlan_tag = device["vlan_tag"]
         vlan_ip = device["vlan_ip"]
 
-        # Consolidate Netmiko connection parameters cleanly
         params = {
             "device_type": device_type,
             "host": device_ip,
@@ -53,7 +53,7 @@ def set_vlans(group_name):
             "system_host_keys": device.get("system_host_keys", False),
         }
 
-        # Structure the EXOS specific VLAN configuration commands
+        # Build our list of precise EXOS CLI commands using variables from our inventory
         commands = [
             f"create vlan {vlan_name}",
             f"configure vlan {vlan_name} tag {vlan_tag}",
@@ -66,12 +66,13 @@ def set_vlans(group_name):
                 hostname = device_connection.find_prompt().strip(" #>").strip()
                 print(f"- Connected to {hostname} ({device_ip}). Sending configurations...")
 
-                # Loop through and record each command and response
+                # Loop through our commands list, execute them, and store the output text
                 configurations_set_output = ""
                 for cmd in commands:
                     configurations_set_output += f"Command: {cmd}\n"
                     configurations_set_output += device_connection.send_command(cmd) + "\n"
 
+                # Commit our changes permanently to the primary configuration block
                 print("- Saving running configuration to primary...")
                 configurations_save_output = device_connection.save_config(
                     cmd='save configuration primary',
@@ -79,10 +80,11 @@ def set_vlans(group_name):
                     confirm_response='y'
                 )
 
+                # Capture a quick verification snapshot to confirm the new VLAN states
                 print(f"- Verifying {hostname} VLAN configuration state...")
                 configurations_set_status = device_connection.send_command("show vlan")
 
-                # Build a consistent log file entry with uniform formatting
+                # Compile our execution log, saving tracking steps, save logs, and status checks
                 border = "=" * 50
                 with open(MASTER_FILE, "a") as log_file:
                     log_file.write(f"{border}\n SWITCH: {hostname} ({device_ip})\n{border}\n")

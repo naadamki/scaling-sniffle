@@ -5,13 +5,13 @@ import yaml
 import argparse
 from netmiko import ConnectHandler
 
-# Define working directory and output paths (saving everything to the same directory)
+# Set up our working directory and point to our master text output file
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MASTER_FILE = os.path.join(SCRIPT_DIR, "e1_get-vlans_output.txt")
 
 
 def load_inventory(group_name, filename="inventory.yaml"):
-    """Loads and validates the YAML inventory file for the specified group."""
+    """Reads our YAML inventory file and grabs the specific switch group we ask for."""
     filepath = os.path.join(SCRIPT_DIR, filename)
     
     if not os.path.exists(filepath):
@@ -32,14 +32,13 @@ def load_inventory(group_name, filename="inventory.yaml"):
 
 
 def get_vlans(group_name):
-    """Connects to devices in a group and captures their full running configuration."""
+    """Logs into the switches to pull and document their current configuration states."""
     devices = load_inventory(group_name)
 
     for device in devices:
         device_ip = device["host"]
         device_type = device["device_type"]
 
-        # Consolidate Netmiko connection parameters cleanly
         params = {
             "device_type": device_type,
             "host": device_ip,
@@ -56,9 +55,10 @@ def get_vlans(group_name):
                 print(f"- Connected to {hostname} ({device_ip}).")
                 print(f"- Obtaining configurations for {hostname}.")
 
+                # Gather the current full setup details from the device
                 command_output = device_connection.send_command("show configuration")
 
-                # Build a consistent log file entry with uniform formatting
+                # Format a clean header block to separate different switch logs inside the text file
                 border = "=" * 50
                 with open(MASTER_FILE, "a") as log_file:
                     log_file.write(f"{border}\n SWITCH: {hostname} ({device_ip})\n{border}\n")
