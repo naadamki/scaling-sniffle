@@ -26,6 +26,8 @@ def load_inventory(group_name, filename="inventory.yaml"):
 def log_output(filename, hostname, host, log_title, content):
     output_file = os.path.join(SCRIPT_DIR, filename)
     border = "=" * 50
+
+    print(f"   - Appending results to {filename}")
     with open(output_file, "a") as f:
         f.write(f"=== {log_title.upper()} ===\n{content}\n\n")
 
@@ -51,7 +53,8 @@ def run_task(group_name):
             print(f">>> Connecting to {device['host']} to verify VLAN configuration...")
             connection = ConnectHandler(**netmiko_params)
             hostname = connection.find_prompt().strip(" #>").strip()
-            
+
+            print(f"    - Verifying VLAN configuration of {hostname}...")
             output = connection.send_command(f"show vlan {vlan_name}")
 
             required_items = [vlan_name, str(vlan_tag), vlan_ip]
@@ -67,6 +70,8 @@ def run_task(group_name):
             full_log = f"{verification_status} - {hostname} {device_type} ({ip})\n\n--- Raw Switch Output ---\n{output}"
             
             log_output("e3-verify_vlans-output.txt", hostname, device["host"], "VLAN verification check", full_log)
+
+            print(f"<<< Disconnecting from {hostname}")
             connection.disconnect()
             
         except (NetmikoAuthenticationException, NetmikoTimeoutException) as e:

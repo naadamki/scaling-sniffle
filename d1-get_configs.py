@@ -26,6 +26,8 @@ def load_inventory(group_name, filename="inventory.yaml"):
 def log_output(filename, hostname, host, log_title, content):
     output_file = os.path.join(SCRIPT_DIR, filename)
     border = "=" * 50
+
+    print(f"   - Appending results to {filename}")
     with open(output_file, "a") as f:
         f.write(f"{border}\n DEVICE: {hostname} ({host})\n{border}\n")
         f.write(f"=== {log_title.upper()} ===\n{content}\n\n")
@@ -45,10 +47,15 @@ def run_task(group_name):
             print(f">>> Connecting to {device['host']} to get configuration...")
             connection = ConnectHandler(**netmiko_params)
             hostname = connection.find_prompt().strip(" #>").strip()
+
+            print(f"    - Retrieving configuration of {hostname}...")
             output = connection.send_command("show configuration")
 
             # Log the specific results to the correct file
+            print(f"    - Configuration retrieved.")
             log_output("d1-get_configs-output.txt", hostname, device["host"], "Configuration Backup", output)
+
+            print(f"<<< Disconnecting from {hostname}")
             connection.disconnect()
             
         except (NetmikoAuthenticationException, NetmikoTimeoutException) as e:

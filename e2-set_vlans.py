@@ -26,6 +26,8 @@ def load_inventory(group_name, filename="inventory.yaml"):
 def log_output(filename, hostname, host, log_title, content):
     output_file = os.path.join(SCRIPT_DIR, filename)
     border = "=" * 50
+
+    print(f"   - Appending results to {filename}")    
     with open(output_file, "a") as f:
         f.write(f"{border}\n DEVICE: {hostname} ({host})\n{border}\n")
         f.write(f"=== {log_title.upper()} ===\n{content}\n\n")
@@ -50,7 +52,8 @@ def run_task(group_name):
             print(f">>> Connecting to {device['host']} to set VLAN configuration...")
             connection = ConnectHandler(**netmiko_params)
             hostname = connection.find_prompt().strip(" #>").strip()
-            
+
+            print(f"    - Deploying VLAN configuration to {hostname}...")
             commands = [
                 f"create vlan {vlan_name} tag {vlan_tag}",
                 f"configure vlan {vlan_name} ipaddress {vlan_ip}/24"
@@ -61,6 +64,8 @@ def run_task(group_name):
             
             # Log the specific results to the correct file
             log_output("e2-set_vlans-output.txt", hostname, device["host"], "VLAN Deployment Log", output)
+
+            print(f"<<< Disconnecting from {hostname}")
             connection.disconnect()
             
         except (NetmikoAuthenticationException, NetmikoTimeoutException) as e:

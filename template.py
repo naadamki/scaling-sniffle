@@ -27,6 +27,8 @@ def log_output(filename, hostname, host, log_title, content):
     """Handles all file writing dynamically based on the action type."""
     output_file = os.path.join(SCRIPT_DIR, filename)
     border = "=" * 50
+
+    print(f"   - Appending results to {filename}")    
     with open(output_file, "a") as f:
         f.write(f"{border}\n DEVICE: {hostname} ({host})\n{border}\n")
         f.write(f"=== {log_title.upper()} ===\n{content}\n\n")
@@ -55,11 +57,6 @@ def run_task(group_name, action):
             "host": device["host"],
             "username": device["username"],
             "password": device["password"],
-            "ssh_config_dict": {
-                "look_for_keys": "False",
-                "allow_agent": "False"
-            }
-
         }
 
         
@@ -70,6 +67,7 @@ def run_task(group_name, action):
             
             # --- DYNAMIC EXECUTION ENGINE ---
             if action == "get_configs":
+                print(f"   - Retrieving configurations of {hostname}...")
                 output = connection.send_command("show configuration")
                 
             elif action == "set_vlans":
@@ -77,18 +75,23 @@ def run_task(group_name, action):
                     f"create vlan {vlan_name} tag {vlan_tag}",
                     f"configure vlan {vlan_name} ipaddress {vlan_ip}/24"
                 ]
+                print(f"   - Deploying VLAN configurations on {hostname}...")
                 output = connection.send_config_set(commands)
                 connection.send_command("save configuration primary")
-                print(f"Applied and saved VLAN {vlan_name} on {hostname}.")
+                print(f"   - Applied and saved VLAN {vlan_name} on {hostname}.")
                 
             elif action == "get_vlans":
+                print(f"   - Retrieving VLAN configurations for {hostname}...")
                 output = connection.send_command("show vlan")
                 
             elif action == "verify_vlan":
+                print(f"   - Verifying VLAN configurations on {hostname}...")
                 output = connection.send_command(f"show vlan {vlan_name}")
             
             # Log the specific results to the correct file
             log_output(task["file"], hostname, device["host"], task["title"], output)
+
+            print(f"<<< Disconnecting from {hostname}")
             connection.disconnect()
             
         except (NetmikoAuthenticationException, NetmikoTimeoutException) as e:
