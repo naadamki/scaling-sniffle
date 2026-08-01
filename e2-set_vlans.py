@@ -27,7 +27,7 @@ def log_output(filename, hostname, host, log_title, content):
     output_file = os.path.join(SCRIPT_DIR, filename)
     border = "=" * 50
 
-    print(f"   - Appending results to {filename}")    
+    print(f"    - Appending results to {filename}")    
     with open(output_file, "a") as f:
         f.write(f"{border}\n DEVICE: {hostname} ({host})\n{border}\n")
         f.write(f"=== {log_title.upper()} ===\n{content}\n\n")
@@ -60,7 +60,7 @@ def run_task(group_name):
             ]
             output = connection.send_config_set(commands)
             connection.send_command("save configuration primary")
-            print(f"Applied and saved VLAN {vlan_name} on {hostname}.")
+            print(f"    - Applied and saved VLAN {vlan_name} on {hostname}.")
             
             # Log the specific results to the correct file
             log_output("e2-set_vlans-output.txt", hostname, device["host"], "VLAN Deployment Log", output)

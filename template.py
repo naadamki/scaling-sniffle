@@ -86,8 +86,19 @@ def run_task(group_name, action):
                 
             elif action == "verify_vlan":
                 print(f"   - Verifying VLAN configurations on {hostname}...")
-                output = connection.send_command(f"show vlan {vlan_name}")
-            
+                command_output = connection.send_command(f"show vlan {vlan_name}")
+                required_items = [vlan_name, str(vlan_tag), vlan_ip]
+
+                if all(item in command_output for item in required_items):
+                    output = f"SUCCESS: All parameters found for {vlan_name}."
+                    print(output)
+                else:
+                    # Find exactly what went wrong for better troubleshooting
+                    missing_items = [item for item in required_items if item not in command_output]
+                    output = f"FAILED: Missing fields from output: {missing_items}"
+                    print(output)
+
+
             # Log the specific results to the correct file
             log_output(task["file"], hostname, device["host"], task["title"], output)
 

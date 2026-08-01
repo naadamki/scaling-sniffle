@@ -27,7 +27,7 @@ def log_output(filename, hostname, host, log_title, content):
     output_file = os.path.join(SCRIPT_DIR, filename)
     border = "=" * 50
 
-    print(f"   - Appending results to {filename}")
+    print(f"    - Appending results to {filename}")
     with open(output_file, "a") as f:
         f.write(f"=== {log_title.upper()} ===\n{content}\n\n")
 
@@ -60,11 +60,11 @@ def run_task(group_name):
             required_items = [vlan_name, str(vlan_tag), vlan_ip]
 
             if all(item in output for item in required_items):
-                verification_status = f"SUCCESS: All parameters found for {vlan_name} on {hostname} {device_type} ({ip})."
+                verification_status = f"    - SUCCESS: All parameters found for {vlan_name} on {hostname} {device_type} ({ip})."
                 print(verification_status)
             else:
                 missing_items = [item for item in required_items if item not in output]
-                verification_status = f"FAILED: {hostname} {device_type} ({ip}) is missing fields: {missing_items}"
+                verification_status = f"    - FAILED: {hostname} {device_type} ({ip}) is missing fields: {missing_items}"
                 print(verification_status)
 
             full_log = f"{verification_status} - {hostname} {device_type} ({ip})\n\n--- Raw Switch Output ---\n{output}"
