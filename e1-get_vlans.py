@@ -30,7 +30,7 @@ def log_output(filename, hostname, host, log_title, content):
         f.write(f"{border}\n DEVICE: {hostname} ({host})\n{border}\n")
         f.write(f"=== {log_title.upper()} ===\n{content}\n\n")
 
-def run_task(group_name, action):
+def run_task(group_name):
     devices = load_inventory(group_name)
 
     for device in devices:        
