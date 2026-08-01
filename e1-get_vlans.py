@@ -39,8 +39,11 @@ def run_task(group_name):
             "host": device["host"],
             "username": device["username"],
             "password": device["password"],
-            "look_for_keys": False,
-            "allow_agent": False
+            "ssh_config_dict": {
+                "look_for_keys": "False",
+                "allow_agent": "False"
+            }
+
         }
 
         
