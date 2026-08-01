@@ -34,17 +34,11 @@ def run_task(group_name):
     devices = load_inventory(group_name)
 
     for device in devices:
-        
         netmiko_params = {
             "device_type": device["device_type"],
             "host": device["host"],
             "username": device["username"],
             "password": device["password"],
-            "ssh_config_dict": {
-                "look_for_keys": "False",
-                "allow_agent": "False"
-            }
-
         }
         
         try:
