@@ -40,10 +40,8 @@ def run_task(group_name):
             "host": device["host"],
             "username": device["username"],
             "password": device["password"],
-            "optional_args": {
-                "ssh_strict": device.get("ssh_strict", False),
-                "system_host_keys": device.get("system_host_keys", False)
-            }
+            "look_for_keys": False,
+            "allow_agent": False
         }
         
         try:
