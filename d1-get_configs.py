@@ -52,7 +52,7 @@ def run_task(group_name):
             output = connection.send_command("show configuration")
 
             # Log the specific results to the correct file
-            print(f"    - Configuration retrieved.")
+            print(f"    - {hostname} configuration retrieved.")
             log_output("d1-get_configs-output.txt", hostname, device["host"], "Configuration Backup", output)
 
             print(f"<<< Disconnecting from {hostname}")

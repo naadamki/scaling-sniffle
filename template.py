@@ -28,7 +28,7 @@ def log_output(filename, hostname, host, log_title, content):
     output_file = os.path.join(SCRIPT_DIR, filename)
     border = "=" * 50
 
-    print(f"   - Appending results to {filename}")    
+    print(f"    - Appending results to {filename}")    
     with open(output_file, "a") as f:
         f.write(f"{border}\n DEVICE: {hostname} ({host})\n{border}\n")
         f.write(f"=== {log_title.upper()} ===\n{content}\n\n")

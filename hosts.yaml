@@ -1,0 +1,15 @@
+all:
+  children:
+    Access_Closet_1:
+      hosts:
+        IT_Network:
+          ansible_host: 10.10.1.21
+        MGMT_Network:
+          ansible_host: 10.10.1.22
+        ACCT_Network:
+          ansible_host: 10.10.1.23
+        User_Network:
+          ansible_host: 10.10.1.24
+      vars:
+        ansible_network_os: community.network.extreme_exos
+        ansible_connection: ansible.netcommon.network_cli

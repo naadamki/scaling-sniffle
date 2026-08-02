@@ -1,0 +1,24 @@
+---
+- name: Provision Read/Write User and Save Config
+  hosts: Access_Closet_1
+  gather_facts: false
+
+  tasks:
+    - name: Check existing accounts
+      community.network.exos_command:
+        commands:
+          - show accounts
+      register: accounts_output
+
+    - name: Create read/write admin user
+      community.network.exos_command:
+        commands:
+          - "create account administrator {{ new_username }} {{ new_password }}"
+      when: new_username not in accounts_output.stdout
+      register: creation_output
+
+    - name: Commit running configuration to flash memory
+      community.network.exos_command:
+        commands:
+          - save configuration primary
+      when: creation_output.changed
