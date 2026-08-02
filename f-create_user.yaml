@@ -1,27 +1,25 @@
 ---
-- name: Force Provisioning via Raw SSH Pipeline
+- name: Provision Read/Write User and Save Config Natively
   hosts: localhost
   gather_facts: false
 
   tasks:
-    - name: Push user configuration to EXOS switches over raw SSH
+    - name: Execute account configuration via non-blocking SSH stream
       ansible.builtin.shell: |
-        (
-          echo -e "\n";
-          sleep 1;
-          echo "show accounts";
-          sleep 1;
-          echo "create account administrator Local_Admin WGU123";
-          sleep 1;
-          echo "save configuration primary";
-          sleep 1;
-          echo "exit";
-        ) | ssh -tt -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1 -o HostKeyAlgorithms=+ssh-rsa admin@{{ hostvars[item]['ansible_host'] }}
+        ssh -o StrictHostKeyChecking=no \
+            -o KexAlgorithms=+diffie-hellman-group14-sha1 \
+            -o HostKeyAlgorithms=+ssh-rsa \
+            admin@{{ hostvars[item]['ansible_host'] }} << 'EOF'
+
+        create account administrator Local_Admin WGU123
+        save configuration primary
+        exit
+        EOF
       loop: "{{ groups['Access_Closet_1'] }}"
       register: ssh_output
       ignore_errors: true
 
-    - name: Display execution logs for confirmation
+    - name: Output device transaction results
       ansible.builtin.debug:
         msg: "{{ item.stdout_lines }}"
       loop: "{{ ssh_output.results }}"
