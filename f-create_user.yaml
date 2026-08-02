@@ -1,21 +1,28 @@
 ---
-- name: Provision Read/Write User and Save Config
-  hosts: Access_Closet_1
+- name: Force Provisioning via Raw SSH Pipeline
+  hosts: localhost
   gather_facts: false
 
   tasks:
-    - name: Check existing accounts
-      ansible.netcommon.cli_command:
-        command: show accounts
-      register: accounts_output
+    - name: Push user configuration to EXOS switches over raw SSH
+      ansible.builtin.shell: |
+        # Open an interactive SSH session, piping a blank newline for the password, followed by commands
+        (
+          echo -e "\n";
+          sleep 1;
+          echo "show accounts";
+          sleep 1;
+          echo "create account administrator Local_Admin WGU123";
+          sleep 1;
+          echo "save configuration primary";
+          sleep 1;
+          echo "exit";
+        ) | ssh -tt -o StrictHostKeyChecking=no admin@{{ hostvars[item]['ansible_host'] }}
+      loop: "{{ groups['Access_Closet_1'] }}"
+      register: ssh_output
+      ignore_errors: true
 
-    - name: Create read/write admin user
-      ansible.netcommon.cli_command:
-        command: "create account administrator Local_Admin WGU123"
-      when: "'Local_Admin' not in accounts_output.stdout"
-      register: creation_output
-
-    - name: Commit running configuration to flash memory
-      ansible.netcommon.cli_command:
-        command: save configuration primary
-      when: creation_output.changed
+    - name: Display execution logs for confirmation
+      ansible.builtin.debug:
+        msg: "{{ item.stdout_lines }}"
+      loop: "{{ ssh_output.results }}"

@@ -10,8 +10,3 @@ all:
           ansible_host: 10.10.1.23
         User_Network:
           ansible_host: 10.10.1.24
-      vars:
-        ansible_network_os: community.network.exos
-        ansible_connection: ansible.netcommon.network_cli
-        ansible_user: "admin"
-        ansible_network_cli_ssh_type: paramiko
