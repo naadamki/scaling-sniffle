@@ -5,20 +5,17 @@
 
   tasks:
     - name: Check existing accounts
-      community.network.exos_command:
-        commands:
-          - show accounts
+      ansible.netcommon.cli_command:
+        command: show accounts
       register: accounts_output
 
     - name: Create read/write admin user
-      community.network.exos_command:
-        commands:
-          - "create account administrator {{ new_username }} {{ new_password }}"
+      ansible.netcommon.cli_command:
+        command: "create account administrator {{ new_username }} {{ new_password }}"
       when: new_username not in accounts_output.stdout
       register: creation_output
 
     - name: Commit running configuration to flash memory
-      community.network.exos_command:
-        commands:
-          - save configuration primary
+      ansible.netcommon.cli_command:
+        command: save configuration primary
       when: creation_output.changed
