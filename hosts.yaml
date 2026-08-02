@@ -13,3 +13,6 @@ all:
       vars:
         ansible_network_os: community.network.exos
         ansible_connection: ansible.netcommon.network_cli
+        ansible_user: "admin"
+        ansible_password: ""
+        ansible_network_cli_ssh_type: paramiko
