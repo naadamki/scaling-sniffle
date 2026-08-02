@@ -6,7 +6,6 @@
   tasks:
     - name: Push user configuration to EXOS switches over raw SSH
       ansible.builtin.shell: |
-        # Open an interactive SSH session, piping a blank newline for the password, followed by commands
         (
           echo -e "\n";
           sleep 1;
@@ -17,7 +16,7 @@
           echo "save configuration primary";
           sleep 1;
           echo "exit";
-        ) | ssh -tt -o StrictHostKeyChecking=no admin@{{ hostvars[item]['ansible_host'] }}
+        ) | ssh -tt -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1 -o HostKeyAlgorithms=+ssh-rsa admin@{{ hostvars[item]['ansible_host'] }}
       loop: "{{ groups['Access_Closet_1'] }}"
       register: ssh_output
       ignore_errors: true
