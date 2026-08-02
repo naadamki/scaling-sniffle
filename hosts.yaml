@@ -11,5 +11,5 @@ all:
         User_Network:
           ansible_host: 10.10.1.24
       vars:
-        ansible_network_os: community.network.extreme_exos
+        ansible_network_os: community.network.exos
         ansible_connection: ansible.netcommon.network_cli
