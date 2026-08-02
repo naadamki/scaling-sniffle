@@ -11,8 +11,8 @@
 
     - name: Create read/write admin user
       ansible.netcommon.cli_command:
-        command: "create account administrator {{ new_username }} {{ new_password }}"
-      when: new_username not in accounts_output.stdout
+        command: "create account administrator Local_Admin WGU123"
+      when: "'Local_Admin' not in accounts_output.stdout"
       register: creation_output
 
     - name: Commit running configuration to flash memory
