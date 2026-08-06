@@ -1,0 +1,48 @@
+building_name: "N-CoreA-01"
+
+closets:
+  Access_Closet_1:
+    - host: "10.10.1.20"
+      hostname: "Local_Switch"
+      role: "aggregation"
+      vlan_name: "All_Trunks"
+      vlan_id: 0
+      uplink_port: "None"
+      access_ports: "None"
+      core_trunk_port: "None"
+
+    - host: "10.10.1.21"
+      hostname: "IT_Network"
+      role: "access"
+      vlan_name: "IT_VLAN"
+      vlan_id: 10
+      uplink_port: "1:1"
+      access_ports: "1:2-48"
+      core_trunk_port: "1:21"
+
+    - host: "10.10.1.22"
+      hostname: "MGMT_Network"
+      role: "access"
+      vlan_name: "MGMT_VLAN"
+      vlan_id: 20
+      uplink_port: "1:1"
+      access_ports: "1:2-48"
+      core_trunk_port: "1:22"
+
+    - host: "10.10.1.23"
+      hostname: "ACCT_Network"
+      role: "access"
+      vlan_name: "ACCT_VLAN"
+      vlan_id: 30
+      uplink_port: "1:1"
+      access_ports: "1:2-48"
+      core_trunk_port: "1:23"
+
+    - host: "10.10.1.24"
+      hostname: "User_Network"
+      role: "access"
+      vlan_name: "User_VLAN"
+      vlan_id: 40
+      uplink_port: "1:1"
+      access_ports: "1:2-48"
+      core_trunk_port: "1:24"
