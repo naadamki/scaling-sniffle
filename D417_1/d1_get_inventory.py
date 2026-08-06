@@ -7,7 +7,7 @@ from netmiko import ConnectHandler, NetmikoTimeoutException, NetmikoAuthenticati
 
 def parse_arguments():
     """Handles terminal command line parameters explicitly."""
-    p = argparse.ArgumentParser(description="Task D: Network Switch Configuration Backups.")
+    p = argparse.ArgumentParser(description="Network Switch Configuration Backups.")
     p.add_argument("inventory_file", help="Path to the building YAML inventory file.")
     p.add_argument("closet", help="Specific closet grouping to inspect.")
     return p.parse_args()
@@ -37,8 +37,8 @@ def connect_to(device_ip):
         "device_type": "extreme_exos",
         "host": device_ip,
         "username": "admin",
-        "password": "",  # Blank validation password as explicitly mandated on Page 5
-    }
+        "password": "",
+        }
     try:
         return ConnectHandler(**profile)
     except NetmikoAuthenticationException:
@@ -62,12 +62,8 @@ def main():
     all_devices = devices["closets"][args.closet]
     output_filename = "switch_config.ini"
     
-    # Initialize configparser tracking dictionary engine matching Page 1 & 2 guidelines
     config = configparser.ConfigParser()
     
-    # -------------------------------------------------------------
-    # PHASE 1: FAIL-FAST PRE-CHECKS
-    # -------------------------------------------------------------
     print("-- Running network pre-flight ping checks...")
     for sw in all_devices:
         if not is_reachable(sw["host"]):
@@ -75,16 +71,12 @@ def main():
             sys.exit(1)
     print("-- Pre-checks passed! All target hardware is online.\n")
     
-    # -------------------------------------------------------------
-    # PHASE 2: DYNAMIC SWITCH DISCOVERY AND PARSING
-    # -------------------------------------------------------------
     for sw in all_devices:
         print("="*50)
         print(f">> Extracting active profile data from node: {sw['host']}...")
         
         connection = connect_to(sw["host"])
         if connection:
-            # Send targeted evaluation commands matching the attached reference guidelines
             print("[*] Interrogating live operational memory maps...")
             switch_hostname = connection.send_command('show switch | grep "SysName*"')
             switch_ip = connection.send_command('show ipconfig | grep "Default*"')
@@ -92,14 +84,12 @@ def main():
             switch_config2 = connection.send_command('show config | grep "configure sn*"', read_timeout=30)
             connection.disconnect()
             
-            # Execute text parsing slices explicitly copied from the reference template
             host_parsed = switch_hostname.strip()[9:35].strip()
             ip_parsed = switch_ip.strip()[8:29].strip()
             
             print(f"-- Found Host: {host_parsed}")
             print(f"-- Parsed IP: {ip_parsed}")
             
-            # Map into the unique INI section blocks matching Page 2 layout rules
             config[host_parsed] = {
                 'Hostname': host_parsed,
                 'IP Address': ip_parsed,
@@ -111,17 +101,13 @@ def main():
             print(f"!! CRITICAL: Data link drop on {sw['host']}. Terminating backup sequence.")
             sys.exit(1)
             
-    # -------------------------------------------------------------
-    # PHASE 3: WRITE BACKUP MANIFEST TO INI ARCHIVE
-    # -------------------------------------------------------------
     print("\n" + "="*50)
     print(f"[*] Writing aggregated data arrays to file: {output_filename}...")
     
-    # Opened with 'w' instead of 'a' so every fresh run cleanly builds a new audit log
     with open(output_filename, 'w') as configfile:
         config.write(configfile)
         
-    print(f"[+] Task D Success! Final verified data archive output saved to: {output_filename}")
+    print(f"verified data archive output saved to: {output_filename}")
 
 if __name__ == "__main__":
     main()
