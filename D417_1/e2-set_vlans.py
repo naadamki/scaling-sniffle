@@ -94,13 +94,11 @@ def main():
     hub_commands = []
     
     for sw in all_devices:
-        # Populate uniform credential variables required for connection maps
         sw["device_type"] = "extreme_exos"
         sw["username"] = "admin"
-        sw["password"] = "" # Left blank intentionally for Task 1 validation labs
+        sw["password"] = "" 
 
     for sw in access_switches:
-        # 1. Compile localized client edge switch profiles
         sw["compiled_commands"] = [
             f"create vlan {sw['vlan_name']}",
             f"configure vlan {sw['vlan_name']} tag {sw['vlan_id']}",
@@ -109,16 +107,18 @@ def main():
             "save configuration primary"
         ]
         
-        # 2. Accumulate matching aggregation trunk lines intended for Local_Switch
+        # FIXED: We only add the direct configuration commands to the hub list here.
+        # We removed the repeated save command from this loop block!
         hub_commands.extend([
             f"create vlan {sw['vlan_name']}",
             f"configure vlan {sw['vlan_name']} tag {sw['vlan_id']}",
             f"configure vlan {sw['vlan_name']} add ports {sw['core_trunk_port']} tagged"
         ])
         
-    # Append final commit and finalize the aggregation profile
+    # FIXED: The hub switch now gets ONE single save command at the very end of everything!
     hub_commands.append("save configuration primary")
     local_switch["compiled_commands"] = hub_commands
+
     
     # -------------------------------------------------------------
     # PHASE 3: UNIFIED EXECUTION PHASE (THE ULTIMATE DRY LOOP)
