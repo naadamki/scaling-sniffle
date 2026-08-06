@@ -53,7 +53,11 @@ def connect_to(device):
 def push_commands(connection, commands):
     """Pushes a list of configuration commands across an open Netmiko handle."""
     try:
-        connection.send_config_set(commands)
+        connection.send_config_set(
+            commands, 
+            cmd_verify=False, 
+            config_mode_command=""
+        )
         return True
     except Exception as e:
         print(f"!! Command push failed: {e}")
