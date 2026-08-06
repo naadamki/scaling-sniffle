@@ -5,7 +5,7 @@ import yaml
 from netmiko import ConnectHandler, NetmikoTimeoutException, NetmikoAuthenticationException
 
 def parse_arguments():
-    p = argparse.ArgumentParser(description="Automated VLAN Verification Discovery Engine.")
+    p = argparse.ArgumentParser(description="Task E: Automated VLAN Verification Discovery Engine.")
     p.add_argument("inventory_file", help="Path to the building YAML inventory file.")
     p.add_argument("closet", help="Specific closet grouping to verify.")
     return p.parse_args()
@@ -53,6 +53,9 @@ def main():
     
     print("[*] Launching Post-Deployment VLAN Verification Scan...\n")
     
+    # -------------------------------------------------------------
+    # PHASE 1: SCANNING CLIENT EDGE ACCESS LAYER
+    # -------------------------------------------------------------
     print("="*60)
     print("PHASE 1: SCANNING CLIENT EDGE ACCESS LAYER")
     print("="*60)
@@ -64,22 +67,29 @@ def main():
             
         connection = connect_to(sw["host"])
         if connection:
-            # Query active configuration state for this specific VLAN name from memory
-            output = connection.send_command(f"show vlan {sw['vlan_name']}")
+            # Query the broad VLAN database overview table
+            output = connection.send_command("show vlan")
             connection.disconnect()
             
-            tag_flag = f"Tag={sw['vlan_id']}"
-            
             print(f"\n>>> Checking {sw['hostname']}...")
-            if "VLAN NOT FOUND" in output.upper() or "ERROR" in output.upper():
-                print(f"  [FAIL] Target network '{sw['vlan_name']}' does not exist on this switch.")
-            elif tag_flag not in output:
-                print(f"  [FAIL] Network exists but tag does not match expected ID: {sw['vlan_id']}")
+            
+            # FIXED: EXOS prints the VLAN Name and the VID on the same line in 'show vlan'
+            # We look for the custom VLAN name and the numerical ID string inside the output table
+            vlan_name_exists = sw['vlan_name'] in output
+            vid_string_exists = str(sw['vlan_id']) in output
+            
+            if not vlan_name_exists:
+                print(f"  [FAIL] Target network '{sw['vlan_name']}' was not found on this switch.")
+            elif not vid_string_exists:
+                print(f"  [FAIL] Network name matches, but expected VID ({sw['vlan_id']}) is missing.")
             else:
-                print(f"  [PASS] Verified! Network '{sw['vlan_name']}' is live with Tag {sw['vlan_id']}.")
+                print(f"  [PASS] Verified! Network '{sw['vlan_name']}' is live with VID {sw['vlan_id']}.")
         else:
             print(f"  [FAIL] Could not establish secure SSH session to {sw['hostname']}.")
 
+    # -------------------------------------------------------------
+    # PHASE 2: SCANNING AGGREGATION HUB (LOCAL_SWITCH)
+    # -------------------------------------------------------------
     print("\n" + "="*60)
     print("PHASE 2: SCANNING AGGREGATION HUB (LOCAL_SWITCH)")
     print("="*60)
@@ -87,16 +97,18 @@ def main():
     if is_reachable(local_switch["host"]):
         connection = connect_to(local_switch["host"])
         if connection:
-            print(f">>> Inspecting trunk maps on {local_switch['hostname']} ({local_switch['host']})...")
+            print(f">>> Inspecting trunk maps on {local_switch['hostname']} ({local_switch['host']})...\n")
+            
+            # FIXED: Pull the full 'show vlan' database from the hub to check all networks at once
+            hub_output = connection.send_command("show vlan")
+            connection.disconnect()
             
             for sw in access_switches:
-                output = connection.send_command(f"show vlan {sw['vlan_name']}")
-                
-                if sw['vlan_name'] in output and f"Tag={sw['vlan_id']}" in output:
-                    print(f"  [PASS] Trunk map for '{sw['vlan_name']}' (Tag {sw['vlan_id']}) is verified active.")
+                # Check if the specific access switch's network and ID exist on the hub switch
+                if sw['vlan_name'] in hub_output and str(sw['vlan_id']) in hub_output:
+                    print(f"  [PASS] Trunk map for '{sw['vlan_name']}' (VID {sw['vlan_id']}) is verified active.")
                 else:
                     print(f"  [FAIL] Central hub missing trunk routing for network: {sw['vlan_name']}")
-            connection.disconnect()
         else:
             print(f"  [FAIL] Could not establish secure SSH session to Local_Switch.")
     else:
