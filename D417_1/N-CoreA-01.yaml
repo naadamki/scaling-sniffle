@@ -4,7 +4,7 @@ closets:
   Access_Closet_1:
     - host: "10.10.1.20"
       hostname: "Local_Switch"
-      role: "aggregation"
+      role: "aggregate"
       vlan_name: "All_Trunks"
       vlan_id: 0
       uplink_port: "None"

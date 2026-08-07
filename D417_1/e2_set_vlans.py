@@ -65,33 +65,26 @@ def push_commands(connection, commands):
 
 def main():
     args = parse_arguments()
+
+    print(f">> Retrieving inventory file '{file_path}...")    
     devices = load_inventory(args.inventory_file)
-    
     if args.closet not in devices["closets"]:
-        print(f"!! Closet '{args.closet}' not found in {args.inventory_file}.")
+        print(f"!! ERROR: {args.closet} not found in {args.inventory_file}.")
         sys.exit(1)
         
     all_devices = devices["closets"][args.closet]
     
-    # -------------------------------------------------------------
-    # PHASE 1: FAIL-FAST PRE-CHECKS (ALL IN ONE PLACE)
-    # -------------------------------------------------------------
-    print("-- Running network pre-flight ping checks...")
+    print("-- Running network device availability checks...")
     for sw in all_devices:
         if not is_reachable(sw["host"]):
-            print(f"\n!! CRITICAL ERROR: {sw['hostname']} ({sw['host']}) is offline. Aborting deployment for network safety.")
+            print(f"\n!! ERROR: {sw['host']} is offline. Aborting.")
             sys.exit(1)
-    print("-- Pre-checks passed! All target hardware is online.\n")
+    print("-- Availability checks passed! All target network devices are online.\n")
     
-    # Locate our aggregation/hub switch out of the list dynamically
-    local_switch = next(sw for sw in all_devices if sw["role"] == "aggregation")
+
     access_switches = [sw for sw in all_devices if sw["role"] == "access"]
-    
-    # -------------------------------------------------------------
-    # PHASE 2: COMPILATION PHASE (BUILDING AND ATTACHING COMMANDS)
-    # -------------------------------------------------------------
-    print("-- Compiling device-specific configuration profiles...")
-    hub_commands = []
+    aggregate_switch = next(sw for sw in all_devices if sw["role"] == "aggregate")    
+    aggregate_commands = []
     
     for sw in all_devices:
         sw["device_type"] = "extreme_exos"
@@ -107,46 +100,40 @@ def main():
             "save configuration primary"
         ]
         
-        # FIXED: We only add the direct configuration commands to the hub list here.
-        # We removed the repeated save command from this loop block!
-        hub_commands.extend([
+        aggregate_commands.extend([
             f"create vlan {sw['vlan_name']}",
             f"configure vlan {sw['vlan_name']} tag {sw['vlan_id']}",
             f"configure vlan {sw['vlan_name']} add ports {sw['core_trunk_port']} tagged"
         ])
         
-    # FIXED: The hub switch now gets ONE single save command at the very end of everything!
-    hub_commands.append("save configuration primary")
-    local_switch["compiled_commands"] = hub_commands
+    aggregate_commands.append("save configuration primary")
+    aggregate_switch["compiled_commands"] = aggregate_commands
 
     
-    # -------------------------------------------------------------
-    # PHASE 3: UNIFIED EXECUTION PHASE (THE ULTIMATE DRY LOOP)
-    # -------------------------------------------------------------
-    # To maintain trunk stability, provision edge devices first, then apply trunk aggregation hubs last
-    execution_order = access_switches + [local_switch]
+    execution_order = access_switches + [aggregate_switch]
     
     for sw in execution_order:
         print("="*50)
-        print(f">> Provisioning {sw['hostname']} ({sw['host']})...")
-        print(f"-- Opening SSH connection to {sw['host']}...")
-        
+        print(f">> Connecting to {sw['host']}...")
         connection = connect_to(sw)
         if connection:
+            print(f"-- Connected to {sw['hostname']} ({sw['host']}).")            
+            print(f"-- Deploying VLAN configuration to {sw['host']}...")
             push_success = push_commands(connection, sw["compiled_commands"])
+            print(f"<< Disconnecting from {sw['host']}...")
             connection.disconnect()
             
             if push_success:
                 print(f"-- Successfully deployed configuration to {sw['host']}.")
             else:
-                print(f"!! CRITICAL FAULT: Push rejected on {sw['hostname']}.")
+                print(f"!! ERROR: VLAN deployment rejected on {sw['hostname']}.")
                 sys.exit(1)
         else:
-            print(f"!! CRITICAL FAULT: Authentication/timeout on {sw['hostname']}")
+            print(f"!! ERROR: unable to connect to {sw['host']}. Aborting.")
             sys.exit(1)
             
     print("\n" + "="*50)
-    print("-- Success! Complete topology deployment accomplished dynamically.")
+    print("-- Success! VLAN deployment complete.")
 
 if __name__ == "__main__":
     main()

@@ -6,7 +6,7 @@ from netmiko import ConnectHandler, NetmikoTimeoutException, NetmikoAuthenticati
 
 def parse_arguments():
     """Handles terminal command line parameters explicitly."""
-    p = argparse.ArgumentParser(description="Pre-Deployment VLAN Identification Tool.")
+    p = argparse.ArgumentParser(description="VLAN Identification")
     p.add_argument("inventory_file", help="Path to the building YAML inventory file.")
     p.add_argument("closet", help="Specific closet grouping to inspect.")
     return p.parse_args()
@@ -41,53 +41,55 @@ def connect_to(device):
     try:
         return ConnectHandler(**profile)
     except NetmikoAuthenticationException:
-        print(f"Authentication failed for {device['hostname']} at {device['host']}")
+        print(f"!! ERROR: {device['hostname']} ({device['host']}) failed authentication.")
         return False
     except NetmikoTimeoutException:
-        print(f"Timeout connecting to {device['hostname']} at {device['host']}")
+        print(f"!! ERROR: {device['hostname']} ({device['host']}) connection timed out.")
         return False
     except Exception as e:
-        print(f"Connection error to {device['host']}: {e}")
+        print(f"!! ERROR: {device['hostname']} ({device['host']}): {e}")
         return False
 
 def main():
     args = parse_arguments()
+
+    print(f">> Retrieving inventory file '{file_path}...")    
     devices = load_inventory(args.inventory_file)
-    
     if args.closet not in devices["closets"]:
-        print(f"!! Closet '{args.closet}' not found in {args.inventory_file}.")
+        print(f"!! ERROR: {args.closet} not found in {args.inventory_file}.")
         sys.exit(1)
         
     all_devices = devices["closets"][args.closet]
     
-    print("-- Running network pre-flight ping checks...")
+    print("-- Running network device availability checks...")
     for sw in all_devices:
         if not is_reachable(sw["host"]):
-            print(f"\n!! CRITICAL ERROR: {sw['hostname']} ({sw['host']}) is offline. Aborting audit sequence.")
+            print(f"\n!! ERROR: {sw['host']} is offline. Aborting.")
             sys.exit(1)
-    print("-- Pre-checks passed! All target hardware is online.\n")
+    print("-- Availability checks passed! All target network devices are online.\n")
     
-    print("="*60)
-    print("TASK E1: SCANNING FOR EXISTING VLAN DATABASES")
-    print("="*60)
+
     
     for sw in all_devices:
-        print(f"\n>>> Querying VLAN architecture on: {sw['hostname']} ({sw['host']})...")
-        print(f"-- Opening SSH connection to {sw['host']}...")
-        
+        print("="*50)
+        print(f">> Connecting to {sw['host']}...")        
         connection = connect_to(sw)
         if connection:
-            # Execute the exact operational verification command
+            print(f"-- Connected to {sw['host']}.")
+            print(f"-- Retrieving VLAN configuration for {sw['host']}...")
             vlan_database_output = connection.send_command("show vlan")
+            print(f"<< Disonnecting from {sw['host']}.")
             connection.disconnect()
             
-            print(f"[+] Output captured from {sw['hostname']}:")
-            print("-" * 50)
+            print(f"-- {sw['hostname']} VLAN configuration:")
             print(vlan_database_output.strip())
             print("-" * 50)
         else:
-            print(f"!! CRITICAL FAULT: Failed to capture memory state for {sw['hostname']}")
+            print(f"!! ERROR: unable to connect to {sw['host']}. Aborting.")
             sys.exit(1)
+
+    print("\n" + "="*50)
+    print("-- Success! VLAN configuration retrieval complete.")
             
 
 if __name__ == "__main__":
