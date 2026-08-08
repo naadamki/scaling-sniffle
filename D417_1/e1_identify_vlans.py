@@ -9,7 +9,7 @@ env_pass = os.environ.get("EXOS_DEFAULT_PASS", "")
 
 def parse_arguments():
     """Handles terminal command line parameters explicitly."""
-    p = argparse.ArgumentParser(description="Network Device Configuration Backups.")
+    p = argparse.ArgumentParser(description="Network Device VLAN Configuration Retrieval.")
     p.add_argument("inventory_file", help="Path to the building YAML inventory file.")
     p.add_argument("closet", help="Specific closet grouping to inspect.")
     return p.parse_args()
@@ -29,36 +29,30 @@ def load_inventory(file_path):
 def main():
     args = parse_arguments()
 
-    print("\n" + "=" * 50)    
-    print(f"-- Retrieving inventory file '{args.inventory_file}'...")
+    print(f"Starting network device VLAN configuration retrieval...")    
+    print(f"    -- Retrieving inventory file '{args.inventory_file}'...")
     devices = load_inventory(args.inventory_file)
     
     if args.closet not in devices["closets"]:
-        print(f"!! ERROR: '{args.closet}' not found in {args.inventory_file}.")
+        print(f"    !! ERROR: '{args.closet}' not found in {args.inventory_file}.")
         sys.exit(1)
         
     all_devices = devices["closets"][args.closet]
 
-    print("-" * 50)
     for sw in all_devices:
         try:    
             with EXOSManager(sw, username=env_user, password=env_pass) as device:
 
                 output = device.get_vlans()
 
-                print(f"-- {device.hostname} ({device.host}) VLAN configuration:\n")
-                print(f"-- {output}")
+                print(f"    -- {device.hostname} ({device.host}) VLAN configuration:\n")
+                print(f"    -- {output}")
 
         except Exception:
             print(f"-- Skipping to next device...")
             continue
 
-
-
-        print("-" * 50)
-
     print(f"-- Success! VLAN configuration retrieval complete.")
-    print("\n" + "=" * 50)
 
 if __name__ == "__main__":
     main()

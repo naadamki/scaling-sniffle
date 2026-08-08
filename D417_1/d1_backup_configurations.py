@@ -21,29 +21,27 @@ def load_inventory(file_path):
         with open(file_path, "r") as file:
             return yaml.safe_load(file)
     except yaml.YAMLError as e:
-        print(f"!! YAML parsing error: {e}")
+        print(f"    !! YAML parsing error: {e}")
         sys.exit(1)
     except FileNotFoundError:
-        print(f"!! '{file_path}' not found.")
+        print(f"    !! '{file_path}' not found.")
         sys.exit(1)
 
 def main():
     args = parse_arguments()
 
-    print("\n" + "=" * 50)    
-    print(f"-- Retrieving inventory file '{args.inventory_file}'...")
+    print(f"Starting network device configuration backup...")
+    print(f"    -- Retrieving inventory file '{args.inventory_file}'...")
     devices = load_inventory(args.inventory_file)
     
     if args.closet not in devices["closets"]:
-        print(f"!! ERROR: '{args.closet}' not found in {args.inventory_file}.")
+        print(f"    !! ERROR: '{args.closet}' not found in {args.inventory_file}.")
         sys.exit(1)
         
     all_devices = devices["closets"][args.closet]
-    output_filename = "d1_get_configs.ini"
+    output_filename = "d1_backup_configurations_output.ini"
     config = configparser.ConfigParser()
     
-
-    print("-" * 50)  
     for sw in all_devices:
         try:
             with EXOSManager(sw, username=env_user, password=env_pass) as device:
@@ -56,20 +54,19 @@ def main():
                     'Configuration': output
                 }
 
-                print(f"-- {device.hostname} configuration retrieved.")
+                print(f"    -- {device.hostname} configuration retrieved.")
 
 
         except Exception:
-            print(f"-- Skipping to next device...")
+            print(f"    !! Skipping to next device...")
             continue
-
-        print("-" * 50)
             
-    print(f"-- Appending aggregated data to {output_filename}...")
+    print(f"    -- Appending aggregated device backups to {output_filename}...")
     with open(output_filename, 'w') as configfile:
         config.write(configfile)
-    print(f"-- Success! Device configuration retrieval complete. Output: {output_filename}")
-    print("\n" + "=" * 50)
+    print(f"Success! Device configuration backups complete. Output: {output_filename}")
 
 if __name__ == "__main__":
     main()
+
+

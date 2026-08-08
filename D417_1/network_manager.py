@@ -36,7 +36,7 @@ class EXOSManager:
 
 
     def __enter__(self):
-        print(f">> Connecting to {self.host}...")
+        print(f"    >> Connecting to {self.host}...")
         clean_params = self._get_valid_netmiko_params()
         try:
             self.connection = ConnectHandler(**clean_params)
@@ -46,16 +46,16 @@ class EXOSManager:
             if not self.host:
                 self.host = getattr(self.connection, "remote_ip", "Unknown_IP")
                 
-            print(f"-- Connected to {self.hostname} ({self.host}).")
+            print(f"    -- Connected to {self.hostname} ({self.host}).")
             return self
         except Exception as e:
-            print(f"!! Connection failure to {self.host}: {e}")
+            print(f"    !! Connection failure to {self.host}: {e}")
             raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.connection:
             self.connection.disconnect()
-            print(f"<< Disconnected from {self.hostname}.\n")
+            print(f"    << Disconnected from {self.hostname}.\n")
         return False
 
 
@@ -73,22 +73,22 @@ class EXOSManager:
             )
             return True
         except Exception as e:
-            print(f"!! ERROR: Configuration deployment fault: {e}")
+            print(f"    !! ERROR: Configuration deployment fault: {e}")
             return False
 
     def get_config(self):
         """Retrieves the current running configuration of the EXOS switch."""
-        print(f"-- Retrieving configuration from {self.hostname}...")
+        print(f"    -- Retrieving configuration from {self.hostname}...")
         return self.connection.send_command("show configuration")
 
     def get_vlans(self):
         """Retrieves raw VLAN information from the switch."""
-        print(f"-- Retrieving VLAN configuration from {self.hostname}...")
+        print(f"    -- Retrieving VLAN configuration from {self.hostname}...")
         return self.connection.send_command("show vlan")
 
     def create_vlan(self, vlan_id, vlan_name):
         """Creates a VLAN and assigns a description name to it."""
-        print(f"-- Creating VLAN {vlan_id} ({vlan_name}) on {self.hostname}...")
+        print(f"    -- Creating VLAN {vlan_id} ({vlan_name}) on {self.hostname}...")
         commands = [
             f"create vlan {vlan_name}",
             f"configure vlan {vlan_name} tag {vlan_id}"
@@ -103,7 +103,7 @@ class EXOSManager:
         else:
             ports_str = str(ports).replace(" ", "")
 
-        print(f"-- Adding ports {ports_str} to {vlan_name}...")
+        print(f"    -- Adding ports {ports_str} to {vlan_name}...")
         tagged = "tagged" if tag else "untagged"
         command = f"configure vlan {vlan_name} add ports {ports_str} {tagged}"
         return self.connection.send_config_set([command])
@@ -111,7 +111,7 @@ class EXOSManager:
 
     def verify_vlan_exists(self, vlan_id, vlan_name):
         """Checks the global 'show vlan' output to ensure the Name and ID match on the same line."""
-        print(f"-- Checking VLAN configuration for {vlan_name} ({vlan_id})...")
+        print(f"    -- Checking VLAN configuration for {vlan_name} ({vlan_id})...")
         
         output = self.connection.send_command("show vlan")
         
@@ -126,13 +126,13 @@ class EXOSManager:
                     print(f"-- Found {vlan_name} ({vlan_id}).")
                     return True
                     
-        print(f"!! NOT FOUND: {vlan_name} ({vlan_id}).")
+        print(f"    !! {vlan_name} ({vlan_id}) not found.")
         return False
 
 
     def save_config_primary(self):
         """Saves configuration to primary config file interactively."""
-        print(f"-- Saving configuration for {self.hostname} ({self.host})...")
+        print(f"    -- Saving configuration for {self.hostname} ({self.host})...")
 
         output = self.connection.send_command_timing("save configuration primary")
 

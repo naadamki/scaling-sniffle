@@ -1,12 +1,17 @@
+
+
 import argparse
-import subprocess
 import sys
+import os
 import yaml
-from netmiko import ConnectHandler, NetmikoTimeoutException, NetmikoAuthenticationException
+from network_manager import EXOSManager
+
+env_user = os.environ.get("EXOS_DEFAULT_USER", "admin")
+env_pass = os.environ.get("EXOS_DEFAULT_PASS", "")
 
 def parse_arguments():
     """Handles terminal command line parameters explicitly."""
-    p = argparse.ArgumentParser(description="VLAN Verification")
+    p = argparse.ArgumentParser(description="VLAN Verification Engine")
     p.add_argument("inventory_file", help="Path to the building YAML inventory file.")
     p.add_argument("closet", help="Specific closet grouping to verify.")
     return p.parse_args()
@@ -23,98 +28,78 @@ def load_inventory(file_path):
         print(f"!! '{file_path}' not found.")
         sys.exit(1)
 
-def is_reachable(ip):
-    """Performs a single ICMP ping check. True if online, False if offline."""
-    param = "-n" if subprocess.os.name == "nt" else "-c"
-    command = ["ping", param, "1", "-W", "2", ip]
-    result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return result.returncode == 0
-
-def connect_to(ip_address, hostname="Switch"):
-    """Establishes an SSH connection handle using Netmiko."""
-    profile = {
-        "device_type": "extreme_exos",
-        "host": ip_address,
-        "username": "admin",
-        "password": "",
-    }
-    try:
-        return ConnectHandler(**profile)
-    except NetmikoAuthenticationException:
-        print(f"!! ERROR: {hostname} ({ip_address}) failed authentication.")
-    except NetmikoTimeoutException:
-        print(f"!! ERROR: {hostname} ({ip_address}) connection timed out.")
-    except Exception as e:
-        print(f"!! ERROR: {hostname} ({ip_address}): {e}")
-    return False
-
-def verify_vlan_presence(vlan_output, sw_target, context_label="Switch"):
-    """Parses raw text data to verify name and VID presence."""
-    name_exists = sw_target['vlan_name'] in vlan_output
-    vid_exists = str(sw_target['vlan_id']) in vlan_output
-    
-    if not name_exists:
-        print(f"FAIL - [{context_label}] Target network '{sw_target['vlan_name']}' was not found.")
-        return False
-    elif not vid_exists:
-        print(f"FAIL - [{context_label}] '{sw_target['vlan_name']}' matches, but expected VID ({sw_target['vlan_id']}) is missing.")
-        return False
-    else:
-        print(f"PASS - [{context_label}] Verified! Network '{sw_target['vlan_name']}' is live with VID {sw_target['vlan_id']}.")
-        return True
-
 def main():
     args = parse_arguments()
 
-    print(f">> Retrieving inventory file '{file_path}...")    
+    print(f"Starting VLAN Verification for {args.closet}")
+    print(f"    -- Retrieving inventory file '{args.inventory_file}'...")
     devices = load_inventory(args.inventory_file)
+    
     if args.closet not in devices["closets"]:
-        print(f"!! ERROR: {args.closet} not found in {args.inventory_file}.")
+        print(f"    !! ERROR: {args.closet} not found in {args.inventory_file}.")
         sys.exit(1)
         
     all_devices = devices["closets"][args.closet]
-    access_switches = [sw for sw in all_devices if sw["role"] == "access"]
-    agg_switch = next(sw for sw in all_devices if sw["role"] == "aggregate")
+    access_switches = [sw for sw in all_devices if sw.get("role") == "access"]
 
-    print("-- Running network device availability checks...")
-    if not all(is_reachable(sw["host"]) for sw in all_devices):
-        print(f"!! Error: {sw["host"]} is offline. Aborting.")
+    try:
+        agg_switch = next(sw for sw in all_devices if sw.get("role") == "aggregate")
+    except StopIteration:
+        print(f"    !! ERROR: No aggregate switch found in inventory file.")
         sys.exit(1)
-    else:
-        print("-- Availability checks passed! All target network devices are online.\n")
 
+    verification_summary = {}
+
+    print(f"    -- Auditing Access Switches...")
     
     for sw in access_switches:
-        print("="*50)
-        print(f">> Connecting to {sw['host']}...")
-        connection = connect_to(sw["host"], sw["hostname"])
+        v_id = sw.get("vlan_id")
+        v_name = sw.get("vlan_name")
+        hostname = sw.get("hostname")
         
-        if connection:
-            print(f"-- Connected to {sw['hostname']} ({sw['host']}).")
-            print(f"-- Retrieving VLAN configuration from {sw['hostname']} ({sw['host']})...")
-            output = connection.send_command("show vlan")
-            print(f"<< Disconnecting from {sw['host']}...")
-            connection.disconnect()
-            print(f"-- Verifying VLAN configuration...")
-            verify_vlan_presence(output, sw, context_label="Local")
+        verification_summary[hostname] = "FAILED"
+        
+        try:
+            with EXOSManager(sw, username=env_user, password=env_pass) as acc:
+                if acc.verify_vlan_exists(v_id, v_name):
+                    verification_summary[hostname] = "PASSED"
+                else:
+                    print(f"    !! CRITICAL: {hostname} is missing {v_name} ({v_id}).")
+        except Exception:
+            verification_summary[hostname] = "UNREACHABLE"
+            print(f"    !! Skipping {hostname} could not connect.")
             
-
+ 
+    print(f"    -- Auditing Aggregate Switch...")
     
-    connection = connect_to(agg_switch["host"], agg_switch["hostname"])
-    if connection:
-        print(f"Connected to {agg_switch['hostname']} ({agg_switch['host']}).")
-        print(f"-- Retrieving VLAN configuration from {agg_switch['hostname']} ({agg_switch['host']})...")        
-        output = connection.send_command("show vlan")
-        print(f"<< Disconnecting from {agg_switch['hostname']}...")        
-        connection.disconnect()
-        
-        for sw in access_switches:
-            print(f"-- Verifying VLAN configuration...")
-            verify_vlan_presence(output, sw, context_label="Trunk Map")
-            
-    print("\n" + "="*50)
-    print("-- Success! VLAN deployment verification complete.")
+    agg_hostname = agg_switch.get("hostname")
+    verification_summary[agg_hostname] = "PASSED"
+    
+    try:
+        with EXOSManager(agg_switch, username=env_user, password=env_pass) as agg:
+            for sw in access_switches:
+                v_id = sw.get("vlan_id")
+                v_name = sw.get("vlan_name")
+                
+                if not agg.verify_vlan_exists(v_id, v_name):
+                    print(f"    !! CRITICAL: Aggregate core is missing {v_name} ({v_id}).")
+                    verification_summary[agg_hostname] = "PARTIAL_FAIL"
+    except Exception:
+        verification_summary[agg_hostname] = "UNREACHABLE"
+        print(f"    !! CRITICAL: Could not connect to Aggregate: {agg_hostname}")
 
+    print("FINAL VERIFICATION SUMMARY")
+    
+    overall_success = True
+    for node, status in verification_summary.items():
+        print(f"    -- Device: {node.ljust(18)} -> Audit Status: [{status}]")
+        if status != "PASSED":
+            overall_success = False
+            
+    if overall_success:
+        print(f"Success! Device VLAN configuration verification complete: PASSED")
+    else:
+        print(f"ERROR: Missing required VLAN configuration: FAILED")
 
 if __name__ == "__main__":
     main()
