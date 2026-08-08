@@ -4,7 +4,7 @@ all:
       children:
         Access_Closet_1:
           vars:
-            ansible_connection: paramiko  
+            ansible_connection: ansible.builtin.paramiko  
             ansible_network_os: community.network.exos
             ansible_user: "admin"
             ansible_password: "1234"
