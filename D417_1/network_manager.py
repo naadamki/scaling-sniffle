@@ -32,7 +32,7 @@ class EXOSManager:
             "PubkeyAcceptedKeyTypes": "+ssh-rsa"
         }
         
-        return 
+        return clean_dict
 
     def __enter__(self):
         print(f">> Connecting to {self.host}...")
