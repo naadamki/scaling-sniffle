@@ -26,9 +26,14 @@ class EXOSManager:
         
         clean_dict = {k: v for k, v in self.device_params.items() if k in valid_keys}
         
-        clean_dict["ssh_config_file"] = "/root/.ssh/config"
+        # Tell the backend to turn off modern strict SHA-2.
+        # This instantly forces the Python script to negotiate with legacy 'ssh-rsa' algorithms.
+        clean_dict["disabled_algorithms"] = {
+            "pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]
+        }
         
         return clean_dict
+
 
 
     def __enter__(self):
