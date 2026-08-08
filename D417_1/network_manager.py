@@ -1,52 +1,41 @@
-import inspect
 import sys
 from netmiko import ConnectHandler
 
-
-
 class EXOSManager:
-    """A clean tool to handle secure EXOS switch connections."""
     def __init__(self, device_params, username=None, password=None):
         self.device_params = device_params.copy()
-        
         if username and "username" not in self.device_params:
             self.device_params["username"] = username
         if password and "password" not in self.device_params:
             self.device_params["password"] = password
             
         self.connection = None
-        
         self.host = self.device_params.get("host")
         self.hostname = self.device_params.get("hostname", self.host)
 
     def _get_valid_netmiko_params(self):
-        """Dynamically filters self.device_params to only what ConnectHandler accepts."""
-        sig = inspect.signature(ConnectHandler)
-        valid_keys = set(sig.parameters.keys())
+        """Filters input variables down to explicit Netmiko parameters and injects RSA overrides."""
+        netmiko_keys = {"device_type", "host", "ip", "username", "password", "port", "secret", "verbose"}
         
-        clean_dict = {k: v for k, v in self.device_params.items() if k in valid_keys}
+        clean_dict = {k: v for k, v in self.device_params.items() if k in netmiko_keys}
         
-        # Tell the backend to turn off modern strict SHA-2.
-        # This instantly forces the Python script to negotiate with legacy 'ssh-rsa' algorithms.
         clean_dict["disabled_algorithms"] = {
             "pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]
         }
         
         return clean_dict
 
-
-
     def __enter__(self):
         print(f">> Connecting to {self.host}...")
-        
         clean_params = self._get_valid_netmiko_params()
-        
         try:
             self.connection = ConnectHandler(**clean_params)
+            
             if not self.hostname or self.hostname == self.host:
-                self.hostname = self.connection.base_prompt.rstrip(" #> ").strip()            
+                self.hostname = self.connection.base_prompt.rstrip(" #> ").strip()
             if not self.host:
                 self.host = getattr(self.connection, "remote_ip", "Unknown_IP")
+                
             print(f"-- Connected to {self.hostname}.")
             return self
         except Exception as e:
@@ -54,11 +43,12 @@ class EXOSManager:
             raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Ensure connection disconnects gracefully when exiting the context."""
         if self.connection:
             self.connection.disconnect()
             print(f"<< Disconnected from {self.hostname}.\n")
         return False
+
+
 
 
     def send_cmd(self, command, **kwargs):
