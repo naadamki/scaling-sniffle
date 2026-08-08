@@ -29,7 +29,8 @@ def load_inventory(file_path):
 
 def main():
     args = parse_arguments()
-    
+
+    print("\n" + "=" * 50)    
     print(f"-- Retrieving inventory file '{args.inventory_file}'...")
     devices = load_inventory(args.inventory_file)
     
@@ -42,7 +43,7 @@ def main():
     config = configparser.ConfigParser()
     
 
-    print("\n" + "=" * 50)  
+    print("-" * 50)  
     for sw in all_devices:
         try:
             with EXOSManager(sw, username=env_user, password=env_pass) as device:
@@ -62,7 +63,7 @@ def main():
             print(f"-- Skipping to next device...")
             continue
 
-        print("\n" + "-" * 50)
+        print("-" * 50)
             
     print(f"-- Appending aggregated data to {output_filename}...")
     with open(output_filename, 'w') as configfile:
