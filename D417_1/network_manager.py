@@ -23,16 +23,13 @@ class EXOSManager:
         """Dynamically filters self.device_params to only what ConnectHandler accepts."""
         sig = inspect.signature(ConnectHandler)
         valid_keys = set(sig.parameters.keys())
-
+        
         clean_dict = {k: v for k, v in self.device_params.items() if k in valid_keys}
-
-        # EXOS nodes running older SSH only support deprecated ssh-rsa which modern, updated clients refuse to talk to without registering fallback preferences.
-        clean_dict["ssh_config_dict"] = {
-            "HostKeyAlgorithms": "+ssh-rsa",
-            "PubkeyAcceptedKeyTypes": "+ssh-rsa"
-        }
+        
+        clean_dict["ssh_config_file"] = "/root/.ssh/config"
         
         return clean_dict
+
 
     def __enter__(self):
         print(f">> Connecting to {self.host}...")
