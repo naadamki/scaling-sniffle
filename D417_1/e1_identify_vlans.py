@@ -29,8 +29,8 @@ def load_inventory(file_path):
 def main():
     args = parse_arguments()
 
+    print("\n")
     print(f"Starting network device VLAN configuration retrieval...")    
-    print(f"    -- Retrieving inventory file '{args.inventory_file}'...")
     devices = load_inventory(args.inventory_file)
     
     if args.closet not in devices["closets"]:
@@ -52,7 +52,9 @@ def main():
             print(f"-- Skipping to next device...")
             continue
 
-    print(f"-- Success! VLAN configuration retrieval complete.")
+    print(f"Success! VLAN configuration retrieval complete.")
+    print("\n")
+
 
 if __name__ == "__main__":
     main()

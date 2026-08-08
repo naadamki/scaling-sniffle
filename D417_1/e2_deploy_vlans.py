@@ -26,8 +26,8 @@ def load_inventory(file_path):
 def main():
     args = parse_arguments()
 
+    print("\n")
     print(f"Starting VLAN deployment for {args.closet}")
-    print(f"    -- Retrieving inventory file '{args.inventory_file}'...")
     devices = load_inventory(args.inventory_file)
     
     if args.closet not in devices["closets"]:
@@ -40,7 +40,7 @@ def main():
     agg_switch = next(sw for sw in all_devices if sw.get("role") == "aggregate")
 
 
-    print(f"    -- Preparing Aggregate Core Switch configuration...")
+    print(f"Preparing Aggregate Core Switch configuration...")
     try:
         with EXOSManager(agg_switch, username=env_user, password=env_pass) as agg:
             for sw in acc_switches:
@@ -59,7 +59,7 @@ def main():
         print(f"    !! Failed to provision Aggregate Core switch. Aborting.\n{e}")
         sys.exit(1)
 
-    print("     -- Deploying access switch provisioning...")
+    print("Deploying access switch provisioning...")
 
     for sw in acc_switches:
         v_id = sw.get("vlan_id")
@@ -83,6 +83,8 @@ def main():
 
 
     print("Success! Complete deployment finished.")
+    print("\n")
+
 
 if __name__ == "__main__":
     main()

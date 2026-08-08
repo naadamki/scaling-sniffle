@@ -7,13 +7,13 @@
 
   tasks:
     - name: Create Local-Admin user with read/write privileges
-      community.network.exos_command:
+      community.network.exos_config:
         commands:
           - create account admin {{ new_admin_user }} {{ new_admin_password }}
       ignore_errors: yes
 
     - name: Save switch configuration to primary slot
-      community.network.exos_command:
+      community.network.exos_config:
         commands:
           - save configuration primary
       ignore_errors: yes

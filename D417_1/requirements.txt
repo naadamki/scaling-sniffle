@@ -1,0 +1,9 @@
+# Network Automation & CLI Drivers
+netmiko>=4.1.0
+
+# Inventory & Configuration Parsing
+PyYAML>=6.0
+
+# Ansible Framework & Core Tools
+ansible>=8.0.0
+ansible-lint>=6.0.0

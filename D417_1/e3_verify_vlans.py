@@ -31,8 +31,8 @@ def load_inventory(file_path):
 def main():
     args = parse_arguments()
 
+    print("\n")
     print(f"Starting VLAN Verification for {args.closet}")
-    print(f"    -- Retrieving inventory file '{args.inventory_file}'...")
     devices = load_inventory(args.inventory_file)
     
     if args.closet not in devices["closets"]:
@@ -50,7 +50,7 @@ def main():
 
     verification_summary = {}
 
-    print(f"    -- Auditing Access Switches...")
+    print(f"Auditing Access Switches...")
     
     for sw in access_switches:
         v_id = sw.get("vlan_id")
@@ -70,7 +70,7 @@ def main():
             print(f"    !! Skipping {hostname} could not connect.")
             
  
-    print(f"    -- Auditing Aggregate Switch...")
+    print(f"Auditing Aggregate Switch...")
     
     agg_hostname = agg_switch.get("hostname")
     verification_summary[agg_hostname] = "PASSED"
@@ -98,8 +98,10 @@ def main():
             
     if overall_success:
         print(f"Success! Device VLAN configuration verification complete: PASSED")
+        print("\n")
     else:
         print(f"ERROR: Missing required VLAN configuration: FAILED")
+        print("\n")
 
 if __name__ == "__main__":
     main()
