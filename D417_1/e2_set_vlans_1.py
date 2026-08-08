@@ -2,7 +2,7 @@ import argparse
 import sys
 import os
 import yaml
-from network_connection import EXOSManager
+from network_manager import EXOSManager
 
 env_user = os.environ.get("EXOS_DEFAULT_USER", "admin")
 env_pass = os.environ.get("EXOS_DEFAULT_PASS", "")
