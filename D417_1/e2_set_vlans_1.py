@@ -25,6 +25,8 @@ def load_inventory(file_path):
 
 def main():
     args = parse_arguments()
+
+    print("\n" + "=" * 50)    
     print(f"-- Retrieving inventory file '{args.inventory_file}'...")
     devices = load_inventory(args.inventory_file)
     
@@ -41,9 +43,8 @@ def main():
         print("!! ERROR: No aggregate switch found in inventory file.")
         sys.exit(1)
 
-    print("\n" + "=" * 50)
-    print(f"Starting Smart Deployment for Closet: {args.closet}")
-    print("\n" + "-" * 50)
+    print("-" * 50)
+    print(f"-- Starting Deployment for Closet: {args.closet}")
 
     print(f"-- Preparing Aggregate Core Switch configuration...")
     try:
@@ -64,9 +65,9 @@ def main():
         print(f"!! CRITICAL: Failed to provision Aggregate Core switch. Aborting run. Details: {e}")
         sys.exit(1)
 
-    print("\n" + "-" * 50)
+    print("-" * 50)
     print("-- Transitioning to Access Switch Provisioning...")
-    print('\n' +"-" * 50)
+    print("-" * 50)
 
     for sw in access_switches:
         v_id = sw.get("vlan_id")

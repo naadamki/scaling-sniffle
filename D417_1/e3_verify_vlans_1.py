@@ -28,6 +28,8 @@ def load_inventory(file_path):
 
 def main():
     args = parse_arguments()
+
+    print("\n" + "=" * 50)    
     print(f"-- Retrieving inventory file '{args.inventory_file}'...")
     devices = load_inventory(args.inventory_file)
     
@@ -47,7 +49,7 @@ def main():
     # Dictionary to keep score for a professional summary at the end
     verification_summary = {}
 
-    print("\n" + "=" * 50)
+    print("-" * 50)
     print(f"-- Starting VLAN Verification for {args.closet}")
     print("-" * 50)
 
@@ -73,7 +75,7 @@ def main():
             
         print("-" * 50)
 
-    print("\n-- Auditing Aggregate Switch...")
+    print("-- Auditing Aggregate Switch...")
     print("-" * 50)
     
     agg_hostname = agg_switch.get("hostname")
@@ -92,7 +94,7 @@ def main():
         verification_summary[agg_hostname] = "UNREACHABLE"
         print(f"!! CRITICAL: Could not connect to Aggregate: {agg_hostname}")
 
-    print("\n" + "-" * 50)
+    print("-" * 50)
     print("FINAL VERIFICATION SUMMARY")
     print("-" * 50)
     

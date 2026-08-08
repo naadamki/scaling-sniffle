@@ -29,6 +29,7 @@ def load_inventory(file_path):
 def main():
     args = parse_arguments()
 
+    print("\n" + "=" * 50)    
     print(f"-- Retrieving inventory file '{args.inventory_file}'...")
     devices = load_inventory(args.inventory_file)
     
@@ -38,7 +39,7 @@ def main():
         
     all_devices = devices["closets"][args.closet]
 
-    print("\n" + "=" * 50)
+    print("-" * 50)
     for sw in all_devices:
         try:    
             with EXOSManager(sw, username=env_user, password=env_pass) as device:
@@ -54,7 +55,7 @@ def main():
 
 
 
-        print("\n" + "-" * 50)
+        print("-" * 50)
 
     print(f"-- Success! VLAN configuration retrieval complete.")
     print("\n" + "=" * 50)
