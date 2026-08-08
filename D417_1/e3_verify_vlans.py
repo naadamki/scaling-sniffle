@@ -77,11 +77,12 @@ def main():
     agg_switch = next(sw for sw in all_devices if sw["role"] == "aggregate")
 
     print("-- Running network device availability checks...")
-    for sw in all_devices:
-        if not is_reachable(sw["host"]):
-            print(f"\n!! ERROR: {sw['hostname']} ({sw['host']}) is offline. Aborting verification.")
-            sys.exit(1)
-    print("-- Availability checks passed! All target network devices are online.\n")
+    if not all(is_reachable(sw["host"]) for sw in all_devices):
+        print(f"!! Error: {sw["host"]} is offline. Aborting.")
+        sys.exit(1)
+    else:
+        print("-- Availability checks passed! All target network devices are online.\n")
+
     
     for sw in access_switches:
         print("="*50)
