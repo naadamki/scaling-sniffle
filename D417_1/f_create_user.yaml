@@ -13,5 +13,7 @@
 
     - name: Save configuration without interactive prompt
       ansible.netcommon.cli_command:
-        command: "save configuration"
+        command: "save configuration primary"
+        prompt: "Are you sure"
+        answer: "y"
       ignore_errors: yes
