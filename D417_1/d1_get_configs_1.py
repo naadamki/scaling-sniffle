@@ -55,8 +55,8 @@ def main():
                     'Configuration': output
                 }
 
-                print(f"-- {device.hostname} ({device.host}) configuration:\n")
-                print(f"-- {output}")
+                print(f"-- {device.hostname} configuration retrieved.")
+
 
         except Exception:
             print(f"-- Skipping to next device...")

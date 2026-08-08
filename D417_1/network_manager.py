@@ -46,7 +46,7 @@ class EXOSManager:
             if not self.host:
                 self.host = getattr(self.connection, "remote_ip", "Unknown_IP")
                 
-            print(f"-- Connected to {self.hostname}.")
+            print(f"-- Connected to {self.hostname} ({self.host}).")
             return self
         except Exception as e:
             print(f"!! Connection failure to {self.host}: {e}")
