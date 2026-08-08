@@ -1,0 +1,21 @@
+all:
+  children:
+    N-CoreA-01:
+      children:
+        Access_Closet_1:
+          vars:
+            ansible_connection: network_cli
+            ansible_network_os: community.network.exos
+            ansible_user: "{{ vault_ansible_user }}"
+            ansible_password: "{{ vault_ansible_password }}"
+          hosts:
+            Local_Switch:
+              ansible_host: 10.10.1.20
+            IT_Network:
+              ansible_host: 10.10.1.21
+            MGMT_Network:
+              ansible_host: 10.10.1.22
+            ACCT_Network:
+              ansible_host: 10.10.1.23
+            User_Network:
+              ansible_host: 10.10.1.24

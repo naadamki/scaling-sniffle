@@ -1,5 +1,7 @@
-
-
+.vault_pass
+*.pyc
+.ansible
+d1_backup_configurations_output.ini
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

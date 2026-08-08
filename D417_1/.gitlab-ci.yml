@@ -1,0 +1,28 @@
+stages:
+  - lint
+  - deploy
+
+ansible-linting:
+  stage: lint
+  image: python:3.10
+  before_script:
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
+    - ansible-galaxy collection install -r requirements.yml
+  script:
+    - ansible-playbook --syntax-check -i hosts.yaml create_user.yaml
+
+deploy-user-accounts:
+  stage: deploy
+  image: python:3.10
+  before_script:
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
+    - ansible-galaxy collection install -r requirements.yml
+    - echo "$ANSIBLE_VAULT_PASSWORD" > .vault_pass
+  script:
+    - ansible-playbook -i hosts.yaml create_user.yaml --vault-password-file .vault_pass
+  after_script:
+    - rm -f .vault_pass
+  only:
+    - main

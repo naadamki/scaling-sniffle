@@ -1,0 +1,19 @@
+---
+- name: Provision Read/Write Admin User on EXOS Switches
+  hosts: Access_Closet_1
+  gather_facts: no
+  vars_files:
+    - vault.yaml
+
+  tasks:
+    - name: Create Local-Admin user with read/write privileges
+      community.network.exos_command:
+        commands:
+          - create account admin {{ new_admin_user }} {{ new_admin_password }}
+      ignore_errors: yes
+
+    - name: Save switch configuration to primary slot
+      community.network.exos_command:
+        commands:
+          - save configuration primary
+      ignore_errors: yes

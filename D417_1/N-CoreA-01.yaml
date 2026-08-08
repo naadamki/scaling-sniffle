@@ -23,7 +23,7 @@ closets:
       device_type: "extreme_exos"
 
     - host: "10.10.1.22"
-      hostname: "MGMT_Router"     
+      hostname: "MGMT_Network"     
       role: "access"
       vlan_name: "MGMT_VLAN"
       vlan_id: 20

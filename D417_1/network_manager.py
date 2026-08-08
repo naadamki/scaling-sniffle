@@ -110,25 +110,17 @@ class EXOSManager:
 
 
     def verify_vlan_exists(self, vlan_id, vlan_name):
-        """Checks the global 'show vlan' output to ensure the Name and ID match on the same line."""
+        """Checks whether a specific VLAN exists on the EXOS switch."""
         print(f"    -- Checking VLAN configuration for {vlan_name} ({vlan_id})...")
         
-        output = self.connection.send_command("show vlan")
+        output = self.connection.send_command(f"show vlan {vlan_name}")
         
-        for line in output.splitlines():
-            columns = line.strip().split()
+        if "does not exist" in output.lower() or "error" in output.lower():
+            print(f"    !! {vlan_name} ({vlan_id}) not found.")
+            return False
             
-            if len(columns) >= 2:
-                current_name = columns[0]
-                current_id = columns[1]
-                
-                if current_name == str(vlan_name) and current_id == str(vlan_id):
-                    print(f"-- Found {vlan_name} ({vlan_id}).")
-                    return True
-                    
-        print(f"    !! {vlan_name} ({vlan_id}) not found.")
-        return False
-
+        print(f"    -- Found {vlan_name} ({vlan_id}).")
+        return True
 
     def save_config_primary(self):
         """Saves configuration to primary config file interactively."""
