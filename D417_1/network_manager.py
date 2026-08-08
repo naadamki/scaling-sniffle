@@ -14,17 +14,25 @@ class EXOSManager:
         self.hostname = self.device_params.get("hostname", self.host)
 
     def _get_valid_netmiko_params(self):
-        netmiko_keys = {"device_type", "host", "ip", "username", "password", "port", "secret", "verbose"}
+        """Filters variables down to Netmiko parameters and handles blank password driver shifts."""
+        netmiko_keys = {
+            "device_type", "host", "ip", "username", "password", 
+            "port", "secret", "verbose", "use_keys"
+        }
         
         clean_dict = {k: v for k, v in self.device_params.items() if k in netmiko_keys}
         
-        clean_dict["disabled_algorithms"] = {
-            "pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]
-        }
-        
-        clean_dict["use_keys"] = False
+        if not clean_dict.get("password"):
+            clean_dict["device_type"] = "extreme_exos_telnet"
+            clean_dict["use_keys"] = False
+        else:
+            clean_dict["use_keys"] = False
+            clean_dict["disabled_algorithms"] = {
+                "pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]
+            }
         
         return clean_dict
+
 
 
     def __enter__(self):
