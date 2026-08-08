@@ -14,7 +14,7 @@ class EXOSManager:
         self.hostname = self.device_params.get("hostname", self.host)
 
     def _get_valid_netmiko_params(self):
-        """Filters input variables down to explicit Netmiko parameters and injects RSA overrides."""
+        """Filters variables down to Netmiko parameters and configures blank password overrides."""
         netmiko_keys = {"device_type", "host", "ip", "username", "password", "port", "secret", "verbose"}
         
         clean_dict = {k: v for k, v in self.device_params.items() if k in netmiko_keys}
@@ -22,6 +22,9 @@ class EXOSManager:
         clean_dict["disabled_algorithms"] = {
             "pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]
         }
+        
+        clean_dict["allow_agent"] = False
+        clean_dict["look_for_keys"] = False
         
         return clean_dict
 
