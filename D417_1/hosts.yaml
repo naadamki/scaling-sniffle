@@ -4,11 +4,10 @@ all:
       children:
         Access_Closet_1:
           vars:
-            ansible_connection: network_cli
+            ansible_connection: paramiko  
             ansible_network_os: community.network.exos
             ansible_user: "admin"
-            ansible_password: ""
-            ansible_ssh_pass: ""
+            ansible_password: "1234"
             ansible_paramiko_look_for_keys: False
             ansible_ssh_common_args: "-o PreferredAuthentications=password -o PubkeyAuthentication=no -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa"
           hosts:
