@@ -9,9 +9,7 @@ all:
             ansible_user: "admin"
             ansible_password: ""
             ansible_ssh_pass: ""
-            # Force paramiko to submit password auth even when password is blank
             ansible_paramiko_look_for_keys: False
-            ansible_paramiko_allow_agent: False
             ansible_ssh_common_args: "-o PreferredAuthentications=password -o PubkeyAuthentication=no -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa"
           hosts:
             Local_Switch:

@@ -7,9 +7,11 @@
 
   tasks:
     - name: Create Local-Admin user with read/write privileges
-      ansible.builtin.raw: "create account admin {{ new_admin_user }} {{ new_admin_password }}"
+      ansible.netcommon.cli_command:
+        command: "create account admin {{ new_admin_user }} {{ new_admin_password }}"
       ignore_errors: yes
 
     - name: Save configuration to primary slot
-      ansible.builtin.raw: "save configuration primary"
+      ansible.netcommon.cli_command:
+        command: "save configuration primary"
       ignore_errors: yes
