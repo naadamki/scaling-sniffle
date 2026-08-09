@@ -35,8 +35,8 @@ def load_switches(file_path, closet_name):
         print(f"!! Failed to load inventory: {e}")
         sys.exit(1)
 
-def transfer_key_via_paramiko(ip, username, password, local_file, remote_file):
-    """Transfers public key file using Python Paramiko SFTP client."""
+def transfer_key_via_paramiko(ip, username, password, local_file):
+    """Transfers public key file directly to EXOS memory storage via SFTP."""
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     
@@ -50,7 +50,8 @@ def transfer_key_via_paramiko(ip, username, password, local_file, remote_file):
     )
     
     sftp = ssh.open_sftp()
-    sftp.put(local_file, remote_file)
+    # Explicit root slash prevents EXOS SFTP path resolution errors
+    sftp.put(local_file, "/id_rsa.ssh")
     sftp.close()
     ssh.close()
 
@@ -78,9 +79,10 @@ def main():
         print(f"----------------------------------------")
 
         # Step 1: SFTP Transfer
+        # Step 1: SFTP Transfer to EXOS root partition
         try:
             print(f"  [1/4] Transferring id_rsa.pub to {ip} via SFTP...")
-            transfer_key_via_paramiko(ip, EXOS_USER, EXOS_PASS, SSH_KEY_PATH, "id_rsa.ssh")
+            transfer_key_via_paramiko(ip, EXOS_USER, EXOS_PASS, SSH_KEY_PATH)
             print("  [+] Transfer successful.")
         except Exception as e:
             print(f"  [!] SFTP Transfer failed on {ip}: {e}")
