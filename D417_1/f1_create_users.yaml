@@ -1,79 +1,31 @@
 ---
-- name: Provision EXOS Users via SSH Expect Module
+- name: Provision Read/Write User Accounts via SSH
   hosts: Access_Closet_1
   gather_facts: false
-  connection: local
 
   vars_files:
     - vault.yaml
 
   vars:
+    access_level: "read-write"
     new_username: "{{ vault_new_username }}"
     new_password: "{{ vault_new_password }}"
-    access_level: "read-write"
 
   tasks:
-    - name: Interactive SSH session to handle blank password and create user
-      ansible.builtin.expect:
-        command: "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAcceptedAlgorithms=+ssh-rsa -o HostKeyAlgorithms=+ssh-rsa admin@{{ ansible_host }}"
-        timeout: 30
-        responses:
-          (?i)password: ""
-          
-          (?i)[\#\>]:
-            - "create account user {{ new_username }} {{ new_password }} {{ access_level }}"
-            - "save configuration primary"
-            - "y"
-            - "exit"
-      register: user_creation_result
+    - name: Create EXOS user account with read/write access
+      extreme.exos.exos_config:
+        lines:
+          - "create account user {{ new_username }} {{ new_password }} {{ access_level }}"
+      register: account_result
+      failed_when:
+        - account_result.failed | default(false)
+        - "'already exists' not in (account_result.module_stderr | default('') | lower)"
 
-    - name: Confirm execution success
+    - name: Save configuration to primary
+      extreme.exos.exos_config:
+        lines:
+          - "save configuration primary"
+
+    - name: Confirm deployment status
       ansible.builtin.debug:
-        msg: "Successfully provisioned user on {{ inventory_hostname }} ({{ ansible_host }})."
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ---
-# - name: Provision Read/Write User Accounts via SSH
-#   hosts: Access_Closet_1
-#   gather_facts: false
-
-#   vars_files:
-#     - vault.yaml
-
-#   vars:
-#     access_level: "read-write"
-#     new_username: "{{ vault_new_username }}"
-#     new_password: "{{ vault_new_password }}"
-
-#   tasks:
-#     - name: Create EXOS user account with read/write access
-#       extreme.exos.exos_config:
-#         lines:
-#           - "create account user {{ new_username }} {{ new_password }} {{ access_level }}"
-#       register: account_result
-#       failed_when:
-#         - account_result.failed | default(false)
-#         - "'already exists' not in (account_result.module_stderr | default('') | lower)"
-
-#     - name: Save configuration to primary
-#       extreme.exos.exos_config:
-#         lines:
-#           - "save configuration primary"
-
-#     - name: Confirm deployment status
-#       ansible.builtin.debug:
-#         msg: "Success: Account '{{ new_username }}' configured on {{ inventory_hostname }}."
+        msg: "Success: Account '{{ new_username }}' configured on {{ inventory_hostname }}."
