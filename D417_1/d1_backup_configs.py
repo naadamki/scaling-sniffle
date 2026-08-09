@@ -40,7 +40,7 @@ def main():
     args = parse_arguments()
     switches = load_switches(args.inventory_file, args.closet)
 
-    output_filename = "d1_backup_configurations_output.ini"
+    output_filename = "d1_backup_configs_output.ini"
     config = configparser.ConfigParser()
  
     print(f"\nStarting network device configuration backup...")
