@@ -4,7 +4,8 @@ import yaml
 import sys
 from netmiko import ConnectHandler
 
-INVENTORY_FILE = "N-CoreA-01.yaml"  # Path to your inventory file
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+INVENTORY_FILE = os.path.join(SCRIPT_DIR, "..", "N-CoreA-01.yaml")
 CLOSET = "Access_Closet_1"
 EXOS_USER = "admin"
 EXOS_PASS = ""
@@ -89,12 +90,14 @@ def main():
         test_ssh_cmd = [
             "ssh",
             "-o", "StrictHostKeyChecking=no",
+            "-o", "UserKnownHostsFile=/dev/null",
+            "-o", "HostKeyAlgorithms=+ssh-rsa",
+            "-o", "PubkeyAcceptedKeyTypes=+ssh-rsa",
             "-o", "BatchMode=yes",
             "-o", "ConnectTimeout=5",
             f"{EXOS_USER}@{ip}",
             "show version"
         ]
-
         res = subprocess.run(test_ssh_cmd, capture_output=True, text=True)
 
         if res.returncode == 0:
