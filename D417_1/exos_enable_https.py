@@ -48,7 +48,8 @@ def main():
 
             commands = [
                 "configure ssl certificate privkeylen 2048 country US organization Lab common-name exos.local",
-                "enable web https"
+                "enable web https",
+                "enable web rest",
             ]
 
             # 1. Send config block with cmd_verify=False and an extended read_timeout for key generation
