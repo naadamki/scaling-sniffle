@@ -7,7 +7,7 @@ from network_manager import EXOSManager
 
 env_user = os.environ.get("EXOS_DEFAULT_USER", "admin")
 env_pass = os.environ.get("EXOS_DEFAULT_PASS", "1234")
-new_pass = os.environ.get("EXOS_PASS_PASS", "4321")
+new_pass = os.environ.get("EXOS_NEW_PASS", "4321")
 
 def parse_arguments():
     """Handles terminal command line parameters explicitly."""
@@ -34,7 +34,8 @@ def main():
         try:
             with EXOSManager(sw, username=env_user, password=env_pass) as device:
                 try:
-                    device.send_config(f"configure account admin password {new_pass}")
+                    command = f"configure account admin password {new_pass}"
+                    device.send_config(command)
                     print(f"    -- Configured new password.")
                 except Exception as e:
                     print(f"    !! {e}")
