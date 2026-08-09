@@ -46,14 +46,26 @@ def main():
         
         try:
             with EXOSManager(sw, username=env_user, password=env_pass) as connection:
-                connection.send_cmd(f"configure account admin password {NEW_ADMIN_PASS}")
-
-                connection.send_cmd("save configuration")
+                # 1. Trigger the interactive password change
+                connection.send_cmd("configure account admin password", expect_string=r"(?i)password:")
+                
+                # 2. Send Enter (empty string) for the current blank password
+                connection.send_cmd("", expect_string=r"(?i)new password:")
+                
+                # 3. Send the new password
+                connection.send_cmd(NEW_ADMIN_PASS, expect_string=r"(?i)re-enter password:")
+                
+                # 4. Confirm the new password and wait for CLI prompt (#)
+                connection.send_cmd(NEW_ADMIN_PASS, expect_string=r"#")
+                
+                # 5. Save configuration and confirm write
+                connection.send_cmd("save configuration primary", expect_string=r"(?i)y/n")
+                connection.send_cmd("y")
 
                 print(f"    -- Successfully bootstrapped {sw_name}")
 
         except Exception as e:
-            print(f"    !! Bootstrap failed on {sw_name}.")
+            print(f"    !! Bootstrap failed on {sw_name}: {e}")
 
 if __name__ == "__main__":
     main()
