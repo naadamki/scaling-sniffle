@@ -13,7 +13,7 @@
 
   tasks:
     - name: Create EXOS user account with read/write access
-      extremenetworks.exos.exos_config:
+      extreme.exos.exos_config:
         lines:
           - "create account user {{ new_username }} {{ new_password }} {{ access_level }}"
       register: account_result
@@ -22,7 +22,7 @@
         - "'already exists' not in (account_result.module_stderr | default('') | lower)"
 
     - name: Save configuration to primary
-      extremenetworks.exos.exos_config:
+      extreme.exos.exos_config:
         lines:
           - "save configuration primary"
 
