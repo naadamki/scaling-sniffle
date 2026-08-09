@@ -41,22 +41,31 @@ def main():
         try:
             net = ConnectHandler(**device)
 
-            net.send_command_timing("enable ssh2")
+            # 1. Start password change, wait for "Current user's password:"
+            net.send_command("configure account admin password", expect_string=r"(?i)current user's password:")
 
-            net.send_command_timing("configure account admin password")
-            net.send_command_timing("")              
-            net.send_command_timing(NEW_ADMIN_PASS)   
-            net.send_command_timing(NEW_ADMIN_PASS)   
+            # 2. Press Enter for the current blank password, wait for "New password:"
+            net.send_command("\n", expect_string=r"(?i)new password:")
 
-            save_out = net.send_command_timing("save configuration primary")
-            if "y/N" in save_out or "?" in save_out or "y/n" in save_out.lower():
-                net.send_command_timing("y")
+            # 3. Type 1234, wait for "Reenter password:"
+            net.send_command(NEW_ADMIN_PASS, expect_string=r"(?i)reenter password:")
+
+            # 4. Re-type 1234 to confirm, wait for CLI prompt (#)
+            net.send_command(NEW_ADMIN_PASS, expect_string=r"#")
+
+            # 5. Enable SSH2
+            net.send_command("enable ssh2")
+
+            # 6. Save configuration
+            save_out = net.send_command("save configuration primary", expect_string=r"(?i)y/n|\?")
+            net.send_command("y", expect_string=r"#")
 
             net.disconnect()
             print(f"[+] Successfully set admin password to '{NEW_ADMIN_PASS}' on {sw_name}!")
 
         except Exception as e:
             print(f"[!] Failed to bootstrap {sw_name}: {e}")
+
 
 if __name__ == "__main__":
     main()
