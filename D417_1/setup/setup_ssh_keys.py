@@ -63,8 +63,8 @@ def main():
     for sw in switches:
         # Resolve IP directly from 'hostname' key
         if isinstance(sw, dict):
-            ip = sw.get("hostname")
-            sw_name = sw.get("name", ip)
+            ip = sw.get("host")
+            sw_name = sw.get("hostname", ip)
         else:
             ip = str(sw)
             sw_name = str(sw)
