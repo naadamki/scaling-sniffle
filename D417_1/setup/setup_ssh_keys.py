@@ -4,7 +4,7 @@ import yaml
 import sys
 from netmiko import ConnectHandler
 
-INVENTORY_FILE = "../N-CoreA-01.yaml"  # Path to your inventory file
+INVENTORY_FILE = "N-CoreA-01.yaml"  # Path to your inventory file
 CLOSET = "Access_Closet_1"
 EXOS_USER = "admin"
 EXOS_PASS = ""
