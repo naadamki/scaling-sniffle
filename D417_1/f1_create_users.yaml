@@ -22,10 +22,8 @@
         - "'already exists' not in (account_result.module_stderr | default('') | lower)"
 
     - name: Save configuration to primary
-      extreme.exos.exos_config:
-        lines:
-          - "save configuration primary"
-
-    - name: Confirm deployment status
-      ansible.builtin.debug:
-        msg: "Success: Account '{{ new_username }}' configured on {{ inventory_hostname }}."
+      ansible.netcommon.cli_command:
+        command: save configuration primary
+        prompt:
+          - "Do you want to save configuration to primary\\.cfg and overwrite it\\?"
+        answer: 'y'
