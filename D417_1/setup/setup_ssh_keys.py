@@ -14,7 +14,7 @@ EXOS_PASS = ""  # Current blank password
 SSH_KEY_PATH = os.path.expanduser("~/.ssh/id_rsa.pub")
 
 def ensure_local_ssh_key():
-    """Generate SSH key pair if it doesn't exist."""
+    """Generate SSH key pair on Ansible Master if it doesn't exist."""
     private_key = os.path.expanduser("~/.ssh/id_rsa")
     if not os.path.exists(private_key):
         print("[*] Generating new RSA SSH key pair (no passphrase)...")
@@ -36,11 +36,10 @@ def load_switches(file_path, closet_name):
         sys.exit(1)
 
 def transfer_key_via_paramiko(ip, username, password, local_file, remote_file):
-    """Transfers public key file using Python Paramiko SFTP/SCP client."""
+    """Transfers public key file using Python Paramiko SFTP client."""
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     
-    # Configure Paramiko to allow older rsa algorithms used by EXOS
     ssh.connect(
         hostname=ip,
         username=username,
@@ -62,22 +61,31 @@ def main():
     print("\nStarting Automated SSH Key Deployment & Verification...\n")
 
     for sw in switches:
-        ip = sw.get("ip") if isinstance(sw, dict) else sw
-        sw_name = sw.get("hostname", ip) if isinstance(sw, dict) else ip
+        # Resolve IP directly from 'hostname' key
+        if isinstance(sw, dict):
+            ip = sw.get("hostname")
+            sw_name = sw.get("name", ip)
+        else:
+            ip = str(sw)
+            sw_name = str(sw)
+
+        if not ip:
+            print(f"[!] Could not determine IP address for entry: {sw}")
+            continue
 
         print(f"----------------------------------------")
         print(f"Processing Switch: {sw_name} ({ip})")
         print(f"----------------------------------------")
 
-        # Step 1: Transfer id_rsa.pub using pure Python Paramiko SFTP
+        # Step 1: SFTP Transfer
         try:
-            print(f"  [1/4] Transferring id_rsa.pub to {sw_name} via SFTP...")
+            print(f"  [1/4] Transferring id_rsa.pub to {ip} via SFTP...")
             transfer_key_via_paramiko(ip, EXOS_USER, EXOS_PASS, SSH_KEY_PATH, "id_rsa.ssh")
             print("  [+] Transfer successful.")
         except Exception as e:
-            print(f"  [!] SFTP Transfer failed on {sw_name}: {e}")
+            print(f"  [!] SFTP Transfer failed on {ip}: {e}")
 
-        # Step 2: Connect via Netmiko & bind key using EXOS commands
+        # Step 2: Netmiko Configuration
         device = {
             'device_type': 'extreme_exos',
             'host': ip,
@@ -90,13 +98,10 @@ def main():
             print("  [2/4] Enabling SSH2 and binding SSH key on switch...")
             net = ConnectHandler(**device)
             
-            # Step 1: Enable SSH2
+            # EXOS Commands
             net.send_command_timing("enable ssh2")
-
-            # Step 3: Bind key file to admin user in EXOS
             net.send_command_timing("configure sshd2 user-key id_rsa.ssh add user admin")
 
-            # Save configuration
             save_out = net.send_command_timing("save configuration primary")
             if "y/N" in save_out or "?" in save_out or "y/n" in save_out.lower():
                 net.send_command_timing("y")
@@ -107,10 +112,10 @@ def main():
             print("  [3/4] Switch configuration saved.")
 
         except Exception as e:
-            print(f"  [!] Failed CLI configuration on {sw_name}: {e}")
+            print(f"  [!] Failed CLI configuration on {ip}: {e}")
             continue
 
-        # Step 3: Step 4 Verification (Passwordless SSH)
+        # Step 3: Passwordless SSH Verification
         print("  [4/4] Verifying passwordless SSH access from Ansible Master...")
         test_ssh_cmd = [
             "ssh",
@@ -127,9 +132,9 @@ def main():
         res = subprocess.run(test_ssh_cmd, capture_output=True, text=True)
 
         if res.returncode == 0:
-            print(f"  [SUCCESS] Passwordless SSH verified for {sw_name}!")
+            print(f"  [SUCCESS] Passwordless SSH verified for {ip}!")
         else:
-            print(f"  [!] Verification failed for {sw_name}:\n{res.stderr.strip()}")
+            print(f"  [!] Verification failed for {ip}:\n{res.stderr.strip()}")
 
 if __name__ == "__main__":
     main()
