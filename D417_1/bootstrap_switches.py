@@ -1,73 +1,62 @@
-import argparse
-import sys
 import os
+import sys
 import yaml
-from network_manager import EXOSManager
+from netmiko import ConnectHandler
 
-env_user = os.environ.get("EXOS_DEFAULT_USER", "admin")
-env_pass = os.environ.get("EXOS_DEFAULT_PASS", "")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+INVENTORY_FILE = os.path.join(SCRIPT_DIR, "N-CoreA-01.yaml")
+CLOSET = "Access_Closet_1"
 
+ENV_USER = os.environ.get("EXOS_DEFAULT_USER", "admin")
+ENV_PASS = os.environ.get("EXOS_DEFAULT_PASS", "")
 NEW_ADMIN_PASS = "1234"
 
-
-def parse_arguments():
-    """Handles terminal command line parameters explicitly."""
-    p = argparse.ArgumentParser(description="Network Device VLAN Configuration Retrieval.")
-    p.add_argument("inventory_file", help="Path to the building YAML inventory file.")
-    p.add_argument("closet", help="Specific closet grouping to inspect.")
-    return p.parse_args()
-
-def load_inventory(file_path):
-    """Safely opens and reads the YAML architecture file."""
+def load_switches(file_path, closet_name):
     try:
-        with open(file_path, "r") as file:
-            return yaml.safe_load(file)
-    except yaml.YAMLError as e:
-        print(f"!! YAML parsing error: {e}")
-        sys.exit(1)
-    except FileNotFoundError:
-        print(f"!! '{file_path}' not found.")
+        with open(file_path, "r") as f:
+            data = yaml.safe_load(f)
+            return data["closets"][closet_name]
+    except Exception as e:
+        print(f"!! Failed to load inventory '{file_path}': {e}")
         sys.exit(1)
 
 def main():
-    args = parse_arguments()
+    switches = load_switches(INVENTORY_FILE, CLOSET)
+    print("\nStarting Fast Switch Bootstrapping...")
 
-    print("\nStarting network device account bootstrapping...")    
-    devices = load_inventory(args.inventory_file)
-    
-    if args.closet not in devices["closets"]:
-        print(f"    !! ERROR: '{args.closet}' not found in {args.inventory_file}.")
-        sys.exit(1)
-        
-    all_devices = devices["closets"][args.closet]
+    for sw in switches:
+        ip = sw.get("host") if isinstance(sw, dict) else str(sw)
+        sw_name = sw.get("hostname", ip) if isinstance(sw, dict) else ip
 
-    for sw in all_devices:
-        sw_name = sw.get("hostname", sw) if isinstance(sw, dict) else sw
-        
+        print(f"\n[*] Bootstrapping {sw_name} ({ip})...")
+
+        device = {
+            'device_type': 'extreme_exos',
+            'host': ip,
+            'username': ENV_USER,
+            'password': ENV_PASS,
+            'disabled_algorithms': dict(pubkeys=['rsa-sha2-256', 'rsa-sha2-512'])
+        }
+
         try:
-            with EXOSManager(sw, username=env_user, password=env_pass) as connection:
-                net = connection.connection if hasattr(connection, 'connection') else connection
-                
-                print(f"    -- Updating password on {sw_name}...")
-                
-                out = net.send_command_timing("configure account admin password")
-                
-                out += net.send_command_timing("")
-                
-                out += net.send_command_timing(NEW_ADMIN_PASS)
-                
-                out += net.send_command_timing(NEW_ADMIN_PASS)
-                
-                save_out = net.send_command_timing("save configuration primary")
-                if "y/N" in save_out or "?" in save_out or "y/n" in save_out.lower():
-                    net.send_command_timing("y")
-                else:
-                    net.send_command_timing("save configuration")
+            net = ConnectHandler(**device)
 
-                print(f"    -- Successfully bootstrapped {sw_name}")
+            net.send_command_timing("enable ssh2")
+
+            net.send_command_timing("configure account admin password")
+            net.send_command_timing("")              
+            net.send_command_timing(NEW_ADMIN_PASS)   
+            net.send_command_timing(NEW_ADMIN_PASS)   
+
+            save_out = net.send_command_timing("save configuration primary")
+            if "y/N" in save_out or "?" in save_out or "y/n" in save_out.lower():
+                net.send_command_timing("y")
+
+            net.disconnect()
+            print(f"[+] Successfully set admin password to '{NEW_ADMIN_PASS}' on {sw_name}!")
 
         except Exception as e:
-            print(f"    !! Bootstrap failed on {sw_name}: {e}\n")
+            print(f"[!] Failed to bootstrap {sw_name}: {e}")
 
 if __name__ == "__main__":
     main()
