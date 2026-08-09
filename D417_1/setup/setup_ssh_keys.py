@@ -1,20 +1,21 @@
 import os
-import subprocess
 import sys
+import subprocess
 import yaml
-import paramiko
+import pexpect
 from netmiko import ConnectHandler
 
 # --- CONFIGURATION ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-INVENTORY_FILE = os.path.join(SCRIPT_DIR, "..", "N-CoreA-01.yaml")
+INVENTORY_FILE = os.path.join(SCRIPT_DIR, "N-CoreA-01.yaml")
 CLOSET = "Access_Closet_1"
-EXOS_USER = "admin"
-EXOS_PASS = ""  # Current blank password
+
+ENV_USER = os.environ.get("EXOS_DEFAULT_USER", "admin")
+ENV_PASS = os.environ.get("EXOS_DEFAULT_PASS", "")  # Blank password
 SSH_KEY_PATH = os.path.expanduser("~/.ssh/id_rsa.pub")
 
 def ensure_local_ssh_key():
-    """Generate SSH key pair on Ansible Master if it doesn't exist."""
+    """Ensure RSA key pair exists on the Ansible master node."""
     private_key = os.path.expanduser("~/.ssh/id_rsa")
     if not os.path.exists(private_key):
         print("[*] Generating new RSA SSH key pair (no passphrase)...")
@@ -23,7 +24,7 @@ def ensure_local_ssh_key():
             check=True
         )
     else:
-        print("[+] Existing SSH key pair found.")
+        print("[+] Existing local SSH key pair found.")
 
 def load_switches(file_path, closet_name):
     """Load switch list from YAML inventory."""
@@ -32,94 +33,102 @@ def load_switches(file_path, closet_name):
             data = yaml.safe_load(f)
             return data["closets"][closet_name]
     except Exception as e:
-        print(f"!! Failed to load inventory: {e}")
+        print(f"!! Failed to load inventory '{file_path}': {e}")
         sys.exit(1)
 
-def transfer_key_via_paramiko(ip, username, password, local_file):
-    """Transfers public key file directly to EXOS memory storage via SFTP."""
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    
-    ssh.connect(
-        hostname=ip,
-        username=username,
-        password=password,
-        look_for_keys=False,
-        allow_agent=False,
-        disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']}
+def scp_transfer_pexpect(ip, username, local_file, remote_filename="id_rsa.ssh"):
+    """
+    Uses pexpect to run system SCP with legacy ssh-rsa flags
+    and automatically presses Enter for a blank password prompt.
+    """
+    scp_cmd = (
+        f"scp -o HostKeyAlgorithms=+ssh-rsa "
+        f"-o PubkeyAcceptedKeyTypes=+ssh-rsa "
+        f"-o StrictHostKeyChecking=no "
+        f"-o UserKnownHostsFile=/dev/null "
+        f"{local_file} {username}@{ip}:{remote_filename}"
     )
+
+    child = pexpect.spawn(scp_cmd, encoding='utf-8', timeout=15)
     
-    sftp = ssh.open_sftp()
-    # Explicit root slash prevents EXOS SFTP path resolution errors
-    sftp.put(local_file, "/id_rsa.ssh")
-    sftp.close()
-    ssh.close()
+    # Wait for either the password prompt, key confirmation, or process termination
+    index = child.expect([r'(?i)password:', r'Are you sure you want to continue', pexpect.EOF, pexpect.TIMEOUT])
+    
+    if index == 1:
+        # Accept SSH host key prompt if requested
+        child.sendline("yes")
+        index = child.expect([r'(?i)password:', pexpect.EOF, pexpect.TIMEOUT])
+
+    if index == 0:
+        # Password prompt detected -> Send Enter for blank password
+        child.sendline("")
+        child.expect(pexpect.EOF)
+        return True
+    elif index == 2:
+        # Process completed without prompt
+        return True
+    else:
+        print(f"    [!] SCP timed out or failed. Output: {child.before}")
+        return False
 
 def main():
     ensure_local_ssh_key()
     switches = load_switches(INVENTORY_FILE, CLOSET)
 
-    print("\nStarting Automated SSH Key Deployment & Verification...\n")
+    print("\nStarting Automated SSH Key Pairing via pexpect...\n")
 
     for sw in switches:
-        # Resolve IP directly from 'hostname' key
-        if isinstance(sw, dict):
-            ip = sw.get("host")
-            sw_name = sw.get("hostname", ip)
-        else:
-            ip = str(sw)
-            sw_name = str(sw)
-
-        if not ip:
-            print(f"[!] Could not determine IP address for entry: {sw}")
-            continue
+        ip = sw.get("host") if isinstance(sw, dict) else str(sw)
+        sw_name = sw.get("hostname", ip) if isinstance(sw, dict) else ip
 
         print(f"----------------------------------------")
         print(f"Processing Switch: {sw_name} ({ip})")
         print(f"----------------------------------------")
 
-        # Step 1: SFTP Transfer
-        # Step 1: SFTP Transfer to EXOS root partition
-        try:
-            print(f"  [1/4] Transferring id_rsa.pub to {ip} via SFTP...")
-            transfer_key_via_paramiko(ip, EXOS_USER, EXOS_PASS, SSH_KEY_PATH)
-            print("  [+] Transfer successful.")
-        except Exception as e:
-            print(f"  [!] SFTP Transfer failed on {ip}: {e}")
-
-        # Step 2: Netmiko Configuration
         device = {
             'device_type': 'extreme_exos',
             'host': ip,
-            'username': EXOS_USER,
-            'password': EXOS_PASS,
+            'username': ENV_USER,
+            'password': ENV_PASS,
             'disabled_algorithms': dict(pubkeys=['rsa-sha2-256', 'rsa-sha2-512'])
         }
 
         try:
-            print("  [2/4] Enabling SSH2 and binding SSH key on switch...")
+            # 1. Connect via Netmiko and enable SSH2
+            print("  [1/4] Enabling SSH2 on switch...")
             net = ConnectHandler(**device)
-            
-            # EXOS Commands
-            net.send_command_timing("enable ssh2")
-            net.send_command_timing("configure sshd2 user-key id_rsa.ssh add user admin")
+            net.send_command("enable ssh2")
 
-            save_out = net.send_command_timing("save configuration primary")
-            if "y/N" in save_out or "?" in save_out or "y/n" in save_out.lower():
-                net.send_command_timing("y")
-            else:
-                net.send_command_timing("save configuration")
+            # 2. Use pexpect to SCP the public key
+            print("  [2/4] Executing SCP transfer (pexpect handling blank pass)...")
+            scp_success = scp_transfer_pexpect(ip, ENV_USER, SSH_KEY_PATH, "id_rsa.ssh")
+            
+            if not scp_success:
+                print(f"  [!] Skipping key binding on {sw_name} due to SCP failure.")
+                net.disconnect()
+                continue
+
+            print("  [+] SCP file transfer complete.")
+
+            # 3. Bind the SSH key on EXOS
+            print("  [3/4] Binding key 'id_rsa.ssh' to user 'admin'...")
+            net.send_command("configure sshd2 user-key id_rsa.ssh add user admin")
+
+            # 4. Save configuration
+            save_out = net.send_command("save configuration primary", expect_string=r"(?i)y/n|\?")
+            if "y/n" in save_out.lower() or "?" in save_out:
+                net.send_command("y")
 
             net.disconnect()
-            print("  [3/4] Switch configuration saved.")
+            print("  [+] Switch configuration saved.")
 
         except Exception as e:
-            print(f"  [!] Failed CLI configuration on {ip}: {e}")
+            print(f"  [!] Configuration failed on {sw_name}: {e}")
             continue
 
-        # Step 3: Passwordless SSH Verification
-        print("  [4/4] Verifying passwordless SSH access from Ansible Master...")
-        test_ssh_cmd = [
+        # 5. Verify Passwordless SSH Connection
+        print("  [4/4] Verifying passwordless SSH connection...")
+        test_cmd = [
             "ssh",
             "-o", "StrictHostKeyChecking=no",
             "-o", "UserKnownHostsFile=/dev/null",
@@ -127,16 +136,16 @@ def main():
             "-o", "PubkeyAcceptedKeyTypes=+ssh-rsa",
             "-o", "BatchMode=yes",
             "-o", "ConnectTimeout=5",
-            f"{EXOS_USER}@{ip}",
+            f"{ENV_USER}@{ip}",
             "show version"
         ]
 
-        res = subprocess.run(test_ssh_cmd, capture_output=True, text=True)
+        res = subprocess.run(test_cmd, capture_output=True, text=True)
 
         if res.returncode == 0:
-            print(f"  [SUCCESS] Passwordless SSH verified for {ip}!")
+            print(f"  [SUCCESS] Passwordless SSH verified for {sw_name}!\n")
         else:
-            print(f"  [!] Verification failed for {ip}:\n{res.stderr.strip()}")
+            print(f"  [!] Verification failed for {sw_name}:\n{res.stderr.strip()}\n")
 
 if __name__ == "__main__":
     main()
