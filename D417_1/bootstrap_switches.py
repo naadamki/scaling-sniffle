@@ -47,11 +47,8 @@ def main():
         try:
             with EXOSManager(sw, username=env_user, password=env_pass) as connection:
 
-                connection.send_cmd("configure account admin password", expect_string=r"New password:")
-                connection.send_cmd(NEW_ADMIN_PASS, expect_string=r"Re-enter password:")
-                connection.send_cmd(NEW_ADMIN_PASS)
-                
-                # Save configuration and handle the (y/N) confirmation prompt
+                # (If current password is blank, pass empty quotes or set inline)
+                connection.send_cmd(f"configure account admin password {NEW_ADMIN_PASS}")
                 connection.send_cmd("save configuration primary", expect_string=r"\(y/N\)")
                 connection.send_cmd("y")
                 print(f"successfully bootstrapped {sw.hostname}")
