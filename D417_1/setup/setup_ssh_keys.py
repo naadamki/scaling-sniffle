@@ -1,52 +1,83 @@
 import os
 import subprocess
-import yaml
 import sys
+import yaml
+import paramiko
 from netmiko import ConnectHandler
 
+# --- CONFIGURATION ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 INVENTORY_FILE = os.path.join(SCRIPT_DIR, "..", "N-CoreA-01.yaml")
 CLOSET = "Access_Closet_1"
 EXOS_USER = "admin"
-EXOS_PASS = ""
+EXOS_PASS = ""  # Current blank password
 SSH_KEY_PATH = os.path.expanduser("~/.ssh/id_rsa.pub")
-KEY_NAME_ON_SWITCH = "id_rsa.ssh"
 
 def ensure_local_ssh_key():
+    """Generate SSH key pair if it doesn't exist."""
     private_key = os.path.expanduser("~/.ssh/id_rsa")
     if not os.path.exists(private_key):
-        print("Generating new RSA SSH key pair (no passphrase)...")
+        print("[*] Generating new RSA SSH key pair (no passphrase)...")
         subprocess.run(
-            ["ssh-keygen", "-t", "rsa", "-N", "", "-f", private_key],
+            ["ssh-keygen", "-t", "rsa", "-m", "PEM", "-N", "", "-f", private_key],
             check=True
         )
     else:
-        print("!! Existing SSH key pair found.")
-
-    with open(SSH_KEY_PATH, "r") as f:
-        return f.read().strip()
+        print("[+] Existing SSH key pair found.")
 
 def load_switches(file_path, closet_name):
+    """Load switch list from YAML inventory."""
     try:
         with open(file_path, "r") as f:
             data = yaml.safe_load(f)
             return data["closets"][closet_name]
     except Exception as e:
-        print(f"    !! Failed to load inventory: {e}")
+        print(f"!! Failed to load inventory: {e}")
         sys.exit(1)
+
+def transfer_key_via_paramiko(ip, username, password, local_file, remote_file):
+    """Transfers public key file using Python Paramiko SFTP/SCP client."""
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    
+    # Configure Paramiko to allow older rsa algorithms used by EXOS
+    ssh.connect(
+        hostname=ip,
+        username=username,
+        password=password,
+        look_for_keys=False,
+        allow_agent=False,
+        disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']}
+    )
+    
+    sftp = ssh.open_sftp()
+    sftp.put(local_file, remote_file)
+    sftp.close()
+    ssh.close()
 
 def main():
     ensure_local_ssh_key()
     switches = load_switches(INVENTORY_FILE, CLOSET)
 
-    print("Starting Automated SSH Key Deployment & Verification...")
+    print("\nStarting Automated SSH Key Deployment & Verification...\n")
 
     for sw in switches:
-        ip = sw.get("host") if isinstance(sw, dict) else sw
+        ip = sw.get("ip") if isinstance(sw, dict) else sw
         sw_name = sw.get("hostname", ip) if isinstance(sw, dict) else ip
 
+        print(f"----------------------------------------")
         print(f"Processing Switch: {sw_name} ({ip})")
+        print(f"----------------------------------------")
 
+        # Step 1: Transfer id_rsa.pub using pure Python Paramiko SFTP
+        try:
+            print(f"  [1/4] Transferring id_rsa.pub to {sw_name} via SFTP...")
+            transfer_key_via_paramiko(ip, EXOS_USER, EXOS_PASS, SSH_KEY_PATH, "id_rsa.ssh")
+            print("  [+] Transfer successful.")
+        except Exception as e:
+            print(f"  [!] SFTP Transfer failed on {sw_name}: {e}")
+
+        # Step 2: Connect via Netmiko & bind key using EXOS commands
         device = {
             'device_type': 'extreme_exos',
             'host': ip,
@@ -56,23 +87,16 @@ def main():
         }
 
         try:
-            print("-- Connecting to switch & enabling SSH2...")
+            print("  [2/4] Enabling SSH2 and binding SSH key on switch...")
             net = ConnectHandler(**device)
             
+            # Step 1: Enable SSH2
             net.send_command_timing("enable ssh2")
 
-            print("-- Deploying public key to switch...")
-            with open(SSH_KEY_PATH, "r") as f:
-                pub_key_content = f.read().strip()
-            
-            # Alternative to SCP: Configures SSH key directly via EXOS CLI
-            # Or if your EXOS version requires scp:
-            # net.send_command_timing(f"scp {EXOS_USER}@{ip}:{KEY_NAME_ON_SWITCH} ...")
-            
-            print("-- Binding SSH key to user 'admin'...")
-            cmd_bind = f'configure ssh-access add user {EXOS_USER} key "{pub_key_content}"'
-            net.send_command_timing(cmd_bind)
+            # Step 3: Bind key file to admin user in EXOS
+            net.send_command_timing("configure sshd2 user-key id_rsa.ssh add user admin")
 
+            # Save configuration
             save_out = net.send_command_timing("save configuration primary")
             if "y/N" in save_out or "?" in save_out or "y/n" in save_out.lower():
                 net.send_command_timing("y")
@@ -80,13 +104,14 @@ def main():
                 net.send_command_timing("save configuration")
 
             net.disconnect()
-            print("-- Switch configuration saved.")
+            print("  [3/4] Switch configuration saved.")
 
         except Exception as e:
-            print(f"!! Failed CLI configuration on {sw_name}: {e}")
+            print(f"  [!] Failed CLI configuration on {sw_name}: {e}")
             continue
 
-        print("-- Verifying passwordless SSH access from Ansible Master...")
+        # Step 3: Step 4 Verification (Passwordless SSH)
+        print("  [4/4] Verifying passwordless SSH access from Ansible Master...")
         test_ssh_cmd = [
             "ssh",
             "-o", "StrictHostKeyChecking=no",
@@ -98,12 +123,13 @@ def main():
             f"{EXOS_USER}@{ip}",
             "show version"
         ]
+
         res = subprocess.run(test_ssh_cmd, capture_output=True, text=True)
 
         if res.returncode == 0:
-            print(f"-- Success! Passwordless SSH verified for {sw_name}!")
+            print(f"  [SUCCESS] Passwordless SSH verified for {sw_name}!")
         else:
-            print(f"!! Verification failed for {sw_name}. Error output:\n{res.stderr}")
+            print(f"  [!] Verification failed for {sw_name}:\n{res.stderr.strip()}")
 
 if __name__ == "__main__":
     main()
