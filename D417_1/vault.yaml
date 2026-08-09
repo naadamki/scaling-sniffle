@@ -1,5 +1,5 @@
 
-vault_current_admin_password: "1234"
+vault_current_admin_password: ""
 
 vault_new_username: "Local-Admin"
 vault_new_password: "WGU123"
