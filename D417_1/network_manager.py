@@ -68,12 +68,12 @@ class EXOSHTTPSManager:
             print(f"    -- Running {command} on {self.hostname}")
             return resp.json()
 
-    def get_config() -> str:
+    def get_config(self) -> str:
         result = self.run_cli("show configuration")
         print(f"    -- Getting current configuration from {self.hostname}...")
         return json.dumps(result, indent=2)
 
-    def get_vlans() -> str:
+    def get_vlans(self) -> str:
         result = self.run_cli("show vlan")
         print(f"    -- Getting VLAN configuration from {self.hostname}...")        
         return json.dumps(result, indent=2)

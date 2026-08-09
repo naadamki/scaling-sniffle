@@ -30,11 +30,11 @@ def load_devices(file_path, closet_name):
 def main():
     args = parse_arguments()
     devices = load_devices(args.inventory_file, args.closet)
-
+    print(f"Beginning HTTPS Enablement on Devices Within {args.closet}.")
     for device in devices:
         host_ip = device.get("host")
         hostname = device.get("hostname", host_ip)
-        print(f"Enabling HTTPS on {hostname} ({host_ip})...")
+        print(f"    -- Enabling HTTPS on {hostname} ({host_ip})...")
 
         try:
             # Connect via Netmiko
