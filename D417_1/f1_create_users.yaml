@@ -15,7 +15,7 @@
     - name: Create EXOS user account with read/write access
       extreme.exos.exos_config:
         lines:
-          - "create account user {{ new_username }} {{ new_password }} {{ access_level }}"
+          - "create account admin {{ new_username }} {{ new_password }}"
       register: account_result
       failed_when:
         - account_result.failed | default(false)
