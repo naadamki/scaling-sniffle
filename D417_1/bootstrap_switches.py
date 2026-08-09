@@ -46,16 +46,14 @@ def main():
         
         try:
             with EXOSManager(sw, username=env_user, password=env_pass) as connection:
-                # 1. Update password
                 connection.send_cmd(f"configure account admin password {NEW_ADMIN_PASS}")
 
-                # 2. Save configuration directly (no prompt expected)
                 connection.send_cmd("save configuration")
 
-                print(f"Successfully bootstrapped {sw_name}")
+                print(f"    -- Successfully bootstrapped {sw_name}")
 
         except Exception as e:
-            print(f"Failed on {sw_name}: {e}")
+            print(f"    !! Bootstrap failed on {sw_name}.")
 
 if __name__ == "__main__":
     main()
