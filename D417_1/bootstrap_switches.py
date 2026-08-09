@@ -41,22 +41,20 @@ def main():
         try:
             net = ConnectHandler(**device)
 
-            # 1. Start password change, wait for "Current user's password:"
-            net.send_command("configure account admin password", expect_string=r"(?i)current user's password:")
+            # 1. Trigger password change. Netmiko's trailing \n satisfies "Current user's password:",
+            #    so EXOS jumps straight to "New password:"
+            net.send_command("configure account admin password", expect_string=r"(?i)new password:")
 
-            # 2. Press Enter for the current blank password, wait for "New password:"
-            net.send_command("\n", expect_string=r"(?i)new password:")
-
-            # 3. Type 1234, wait for "Reenter password:"
+            # 2. Send 1234, wait for "Reenter password:"
             net.send_command(NEW_ADMIN_PASS, expect_string=r"(?i)reenter password:")
 
-            # 4. Re-type 1234 to confirm, wait for CLI prompt (#)
+            # 3. Confirm 1234, wait for CLI prompt (#)
             net.send_command(NEW_ADMIN_PASS, expect_string=r"#")
 
-            # 5. Enable SSH2
+            # 4. Enable SSH2
             net.send_command("enable ssh2")
 
-            # 6. Save configuration
+            # 5. Save configuration
             save_out = net.send_command("save configuration primary", expect_string=r"(?i)y/n|\?")
             net.send_command("y", expect_string=r"#")
 
@@ -65,7 +63,6 @@ def main():
 
         except Exception as e:
             print(f"[!] Failed to bootstrap {sw_name}: {e}")
-
 
 if __name__ == "__main__":
     main()
