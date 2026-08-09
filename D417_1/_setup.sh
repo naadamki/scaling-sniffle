@@ -10,11 +10,14 @@ if [ ! -f ~/.ssh/id_rsa.pub ]; then
 fi
 
 # Make sure sshpass is installed
+# if ! command -v sshpass &> /dev/null; then
+#     echo "Installing sshpass to handle blank passwords..."
+#     apt-get update && apt-get install -y sshpass
+# fi
 if ! command -v sshpass &> /dev/null; then
     echo "Installing sshpass to handle blank passwords..."
-    apt-get update && apt-get install -y sshpass
+    apt-get install -y sshpass
 fi
-
 # Array of your switch IP addresses
 SWITCHES=("10.10.1.20" "10.10.1.21" "10.10.1.22" "10.10.1.23" "10.10.1.24")
 
