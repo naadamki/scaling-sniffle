@@ -27,22 +27,35 @@ def load_inventory(file_path):
         print(f"    !! '{file_path}' not found.")
         sys.exit(1)
 
+def load_switches(file_path, closet_name):
+    try:
+        with open(file_path, "r") as f:
+            data = yaml.safe_load(f)
+            return data["closets"][closet_name]
+    except Exception as e:
+        print(f"    !! Failed to load inventory: {e}")
+        sys.exit(1)
+
 def main():
     args = parse_arguments()
 
+    switches = load_switches(args.inventory_file, args.closet)
+
+
     print("\n")
     print(f"Starting network device configuration backup...")
-    devices = load_inventory(args.inventory_file)
+    # devices = load_inventory(args.inventory_file)
     
-    if args.closet not in devices["closets"]:
-        print(f"    !! ERROR: '{args.closet}' not found in {args.inventory_file}.")
-        sys.exit(1)
+    # if args.closet not in devices["closets"]:
+    #     print(f"    !! ERROR: '{args.closet}' not found in {args.inventory_file}.")
+    #     sys.exit(1)
         
-    all_devices = devices["closets"][args.closet]
+    # all_devices = devices["closets"][args.closet]
     output_filename = "d1_backup_configurations_output.ini"
     config = configparser.ConfigParser()
     
-    for sw in all_devices:
+    # for sw in all_devices:
+    for sw in switches:
         try:
             with EXOSManager(sw, username=env_user, password=env_pass) as device:
 
