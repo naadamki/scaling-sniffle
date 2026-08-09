@@ -33,7 +33,7 @@ def main():
     args = parse_arguments()
 
     print("\n")
-    print(f"Starting network device VLAN configuration retrieval...")    
+    print(f"Starting network device account bootstrapping...")    
     devices = load_inventory(args.inventory_file)
     
     if args.closet not in devices["closets"]:
@@ -47,13 +47,26 @@ def main():
         try:
             with EXOSManager(sw, username=env_user, password=env_pass) as connection:
 
-                # (If current password is blank, pass empty quotes or set inline)
-                connection.send_cmd(f"configure account admin password {NEW_ADMIN_PASS}")
-                connection.send_cmd("save configuration primary", expect_string=r"\(y/N\)")
+                # 1. Trigger password change and catch EXOS asking for current password
+                connection.send_cmd(
+                    f"configure account admin password {NEW_ADMIN_PASS}",
+                    expect_string=r"(?i)password:"
+                )
+
+                # 2. Press Enter for current blank password & wait for command prompt back (#)
+                connection.send_cmd("", expect_string=r"#")
+
+                # 3. Save configuration & handle (y/N) prompt
+                connection.send_cmd(
+                    "save configuration primary",
+                    expect_string=r"(?i)y/n"
+                )
                 connection.send_cmd("y")
-                print(f"successfully bootstrapped {sw.hostname}")
+
+                print(f"Successfully bootstrapped {sw.hostname}")
+
         except Exception as e:
-            print(f"Failed: {e}")
+            print(f"Failed on {sw.hostname}: {e}")
 
 
 
