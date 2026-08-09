@@ -32,8 +32,7 @@ def load_inventory(file_path):
 def main():
     args = parse_arguments()
 
-    print("\n")
-    print(f"Starting network device account bootstrapping...")    
+    print("\nStarting network device account bootstrapping...")    
     devices = load_inventory(args.inventory_file)
     
     if args.closet not in devices["closets"]:
@@ -43,31 +42,19 @@ def main():
     all_devices = devices["closets"][args.closet]
 
     for sw in all_devices:
-
+        sw_name = sw.get("hostname", sw) if isinstance(sw, dict) else sw
+        
         try:
             with EXOSManager(sw, username=env_user, password=env_pass) as connection:
+                connection.send_cmd(f"configure account admin password {NEW_ADMIN_PASS}")
 
-                # 1. Trigger password change and catch EXOS asking for current password
-                connection.send_cmd(
-                    f"configure account admin password {NEW_ADMIN_PASS}",
-                    expect_string=r"(?i)password:"
-                )
-
-                # 2. Press Enter for current blank password & wait for command prompt back (#)
-                connection.send_cmd("", expect_string=r"#")
-
-                # 3. Save configuration & handle (y/N) prompt
-                connection.send_cmd(
-                    "save configuration primary",
-                    expect_string=r"(?i)y/n"
-                )
+                connection.send_cmd("save configuration primary", expect_string=r"(?i)y/n")
                 connection.send_cmd("y")
 
-                print(f"Successfully bootstrapped {sw.hostname}")
+                print(f"Successfully bootstrapped {sw_name}")
 
         except Exception as e:
-            print(f"Failed on {sw.hostname}: {e}")
-
+            print(f"Failed on {sw_name}: {e}")
 
 
 if __name__ == "__main__":
