@@ -45,8 +45,8 @@ def main():
                 except Exception as e:
                     print(f"    !! {e}")
 
-        except Exception as e:
-            print(f"    !! ERROR Failed to configure {sw.hostname}: {e}")
+        except Exception:
+            print(f"    !! Switching to next device...")
 
 if __name__ == "__main__":
     main()
