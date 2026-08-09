@@ -1,0 +1,31 @@
+---
+- name: Provision Read/Write User Accounts via SSH
+  hosts: Access_Closet_1
+  gather_facts: false
+
+  vars_files:
+    - vault.yaml
+
+  vars:
+    access_level: "read-write"
+    new_username: "{{ vault_new_username }}"
+    new_password: "{{ vault_new_password }}"
+
+  tasks:
+    - name: Create EXOS user account with read/write access
+      extremenetworks.exos.exos_config:
+        lines:
+          - "create account user {{ new_username }} {{ new_password }} {{ access_level }}"
+      register: account_result
+      failed_when:
+        - account_result.failed | default(false)
+        - "'already exists' not in (account_result.module_stderr | default('') | lower)"
+
+    - name: Save configuration to primary
+      extremenetworks.exos.exos_config:
+        lines:
+          - "save configuration primary"
+
+    - name: Confirm deployment status
+      ansible.builtin.debug:
+        msg: "Success: Account '{{ new_username }}' configured on {{ inventory_hostname }}."

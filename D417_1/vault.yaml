@@ -1,4 +1,5 @@
-vault_ansible_user: "admin"
-vault_ansible_password: "1234"
-new_admin_user: "Local-Admin"
-new_admin_password: "WGU123"
+
+vault_current_admin_password: ""
+
+vault_new_username: "Local-Admin"
+vault_new_password: "WGU123"
