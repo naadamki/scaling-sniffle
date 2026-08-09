@@ -56,7 +56,7 @@ def main():
                 connection.send_command("y")
                 print(f"successfully bootstrapped {sw.hostname}")
         except Exception as e:
-            print(f"Failed")
+            print(f"Failed: {e}")
 
 
 
