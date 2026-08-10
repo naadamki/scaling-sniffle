@@ -190,15 +190,13 @@ class EXOSDriver(BaseDriver):
 
     def run_password_rotation(self, manager_instance, account, old_pass, new_pass):
         conn = manager_instance.connection
-        prompt = manager_instance.hostname
         
         print(f" -- Initiating live operational sequence for '{account}'...")
-        out1 = conn.send_command("configure account admin password", expect_string=r"[Cc]urrent|[Pp]assword:")
-        payload_old = old_pass if old_pass else "\n"
-        out2 = conn.send_command(payload_old, expect_string=r"[Nn]ew\s+[Pp]assword|:")
-        out3 = conn.send_command(new_pass, expect_string=r"[Rr]eenter\s+[Pp]assword|:")
-        final_output = conn.send_command(new_pass, expect_string=fr"{prompt}")
-        
+        out1 = conn.send_command_timing("configure account admin password")
+        payload_old = f"{old_pass}\n" if old_pass else "\n"
+        out2 = conn.send_command_timing(payload_old)
+        out3 = conn.send_command_timing(f"{new_pass}\n")
+        final_output = conn.send_command_timing(f"{new_pass}\n")
         return f"{out1}\n{out2}\n{out3}\n{final_output}"
 
 
