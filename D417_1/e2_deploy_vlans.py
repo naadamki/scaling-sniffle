@@ -2,47 +2,48 @@ import argparse
 import sys
 import os
 import yaml
-from network_manager import EXOSManager
+from network_manager import DeviceManager
+# from network_manager import EXOSManager
 
-env_user = os.environ.get("EXOS_DEFAULT_USER", "admin")
-env_pass = os.environ.get("EXOS_DEFAULT_PASS", "")
+ENV_USER = os.environ.get("DEF_USER", "admin")
+ENV_PASS = os.environ.get("DEF_PASS", "")
+
+TITLE = "automated VLAN depoyment"
 
 def parse_arguments():
-    """Handles terminal command line parameters explicitly."""
-    p = argparse.ArgumentParser(description="Automated VLAN Deployment Engine.")
-    p.add_argument("inventory_file", help="Path to the building YAML inventory file.")
-    p.add_argument("closet", help="Specific closet grouping to configure.")
+    # Handles terminal command line parameters explicitly.
+    p = argparse.ArgumentParser(description=f"Script for {TITLE}.")
+    p.add_argument("-i", "--inventory", help="Building Block YAML inventory file.", default="N-CoreA-01.yaml")
+    p.add_argument("-c", "--closet", help="Specific closet to inspect.", default="Access_Closet_1")
     return p.parse_args()
 
-def load_inventory(file_path):
-    """Safely opens and reads the YAML architecture file."""
+def load_inventory(inventory, closet):
     try:
-        with open(file_path, "r") as file:
-            return yaml.safe_load(file)
-    except (yaml.YAMLError, FileNotFoundError) as e:
-        print(f"    !! ERROR: Loading inventory failed: {e}")
+        with open(inventory, "r") as f:
+            data = yaml.safe_load(f)
+            try:
+                return data["inventory"][closet]
+            except:
+                print(f"  !!  {closet} not in {inventory}")
+                sys.exit(1)
+    except Exception as e:
+        print(f"  !!  Failed to load inventory.")
+        print(f"  !!  {e}")
         sys.exit(1)
+
 
 def main():
+    print(f"\nStarting {TITLE}...")
+
     args = parse_arguments()
+    inventory = load_inventory(args.inventory, args.closet)
+            
+    acc_switches = [sw for sw in inventory if sw.get("role") == "access"]
+    agg_switch = next(sw for sw in inventory if sw.get("role") == "aggregate")
 
-    print("\n")
-    print(f"Starting VLAN deployment for {args.closet}")
-    devices = load_inventory(args.inventory_file)
-    
-    if args.closet not in devices["closets"]:
-        print(f"    !! ERROR: {args.closet} not found in {args.inventory_file}.")
-        sys.exit(1)
-        
-    all_devices = devices["closets"][args.closet]
-    
-    acc_switches = [sw for sw in all_devices if sw.get("role") == "access"]
-    agg_switch = next(sw for sw in all_devices if sw.get("role") == "aggregate")
-
-
-    print(f"Preparing Aggregate Core Switch configuration...")
+    print(f"--  Deploying VLAN configuration to aggregation ({agg_swith["hostname"]})...")
     try:
-        with EXOSManager(agg_switch, username=env_user, password=env_pass) as agg:
+        with DeviceManager(agg_switch, username=ENV_USER, password=ENV_PASS) as agg:
             for sw in acc_switches:
                 v_id = sw.get("vlan_id")
                 v_name = sw.get("vlan_name")
@@ -56,10 +57,10 @@ def main():
             agg.save_config_primary()
             
     except Exception as e:
-        print(f"    !! Failed to provision Aggregate Core switch. Aborting.\n{e}")
+        print(f"  !!  Failed to provision Aggregate Core switch. Aborting.\n  !!  {e}")
         sys.exit(1)
 
-    print("Deploying access switch provisioning...")
+    print("--  Deploying access switch provisioning...")
 
     for sw in acc_switches:
         v_id = sw.get("vlan_id")
@@ -68,7 +69,7 @@ def main():
         acc_ports = sw.get("access_ports")
 
         try:
-            with EXOSManager(sw, username=env_user, password=env_pass) as acc:
+            with DeviceManager(sw, username=ENV_USER, password=ENV_PASS) as acc:
                 if not acc.verify_vlan_exists(v_id, v_name):
                     acc.create_vlan(v_id, v_name)
                 
@@ -76,15 +77,11 @@ def main():
                 acc.add_vlan_ports(v_name, acc_ports, tag=False)
                 acc.save_config_primary()
                 
-        except Exception:
-            print(f"    !! Deployment failed on {sw.get('hostname')} ({sw.get('host')})")
-            continue
+        except Exception as e:
+            print(f"  !!  Failed to provision access switch. Aborting.\n  !!  {e}")
 
-
-
-    print("Success! Complete deployment finished.")
-    print("\n")
-
+print(f"Success running {TITLE}!\n")
 
 if __name__ == "__main__":
     main()
+

@@ -1,6 +1,6 @@
 building_name: "N-CoreA-01"
 
-closets:
+inventory:
   Access_Closet_1:
     - host: "10.10.1.20"
       hostname: "Local_Switch"

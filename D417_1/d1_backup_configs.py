@@ -3,72 +3,63 @@ import configparser
 import sys
 import os
 import yaml
-from network_manager import EXOSManager
+from network_manager import DeviceManager
 
-env_user = os.environ.get("EXOS_DEFAULT_USER", "admin")
-env_pass = os.environ.get("EXOS_DEFAULT_PASS", "")
+ENV_USER = os.environ.get("DEF_USER", "admin")
+ENV_PASS = os.environ.get("DEF_PASS", "")
+
+TITLE = "network device configuration backup"
 
 def parse_arguments():
-    """Handles terminal command line parameters explicitly."""
-    p = argparse.ArgumentParser(description="Network Device Configuration Backups.")
-    p.add_argument("inventory_file", help="Path to the building YAML inventory file.")
-    p.add_argument("closet", help="Specific closet grouping to inspect.")
+    # Handles terminal command line parameters explicitly.
+    p = argparse.ArgumentParser(description=f"Script for {TITLE}.")
+    p.add_argument("-i", "--inventory", help="Building Block YAML inventory file.", default="N-CoreA-01.yaml")
+    p.add_argument("-c", "--closet", help="Specific closet to inspect.", default="Access_Closet_1")
     return p.parse_args()
 
-def load_inventory(file_path):
-    """Safely opens and reads the YAML architecture file."""
+def load_inventory(inventory, closet):
     try:
-        with open(file_path, "r") as file:
-            return yaml.safe_load(file)
-    except yaml.YAMLError as e:
-        print(f"    !! YAML parsing error: {e}")
-        sys.exit(1)
-    except FileNotFoundError:
-        print(f"    !! '{file_path}' not found.")
-        sys.exit(1)
-
-def load_switches(file_path, closet_name):
-    try:
-        with open(file_path, "r") as f:
+        with open(inventory, "r") as f:
             data = yaml.safe_load(f)
-            return data["closets"][closet_name]
+            try:
+                return data["inventory"][closet]
+            except:
+                print(f"  !!  {closet} not in {inventory}")
+                sys.exit(1)
     except Exception as e:
-        print(f"    !! Failed to load inventory: {e}")
+        print(f"  !!  Failed to load inventory.")
+        print(f"  !!  {e}")
         sys.exit(1)
 
 def main():
-    args = parse_arguments()
-    switches = load_switches(args.inventory_file, args.closet)
+    print(f"\nStarting {TITLE}...")
 
-    output_filename = "d1_backup_configs_output.ini"
+    args = parse_arguments()
+    inventory = load_inventory(args.inventory, args.closet)
+    output_file = "d1_backup_configs_output.ini"
     config = configparser.ConfigParser()
  
-    print(f"\nStarting network device configuration backup...")
-
-    for sw in switches:
+    for device in inventory:
         try:
-            with EXOSManager(sw, username=env_user, password=env_pass) as device:
-
-                output = device.get_config()
-
-                config[device.hostname] = {
-                    'Hostname': device.hostname,
-                    'IP Address': device.host,
+            with DeviceManager(device, username=ENV_USER, password=ENV_PASS) as connection:
+                output = connection.get_config()
+                config[connection.hostname] = {
+                    'Hostname': connection.hostname,
+                    'IP Address': connection.host,
                     'Configuration': output
                 }
-
-                print(f"    -- {device.hostname} configuration retrieved.")
+                print(f"  --  {connection.hostname} configuration backup created.")
 
 
         except Exception:
-            print(f"    !! Skipping to next device...")
-            continue
+            print(f"  !!  Process aborted for {device['hostname']}\n  !!  {e}")
             
-    print(f"    -- Appending aggregated device backups to {output_filename}...")
-    with open(output_filename, 'w') as configfile:
-        config.write(configfile)
-    print(f"Success! Device configuration backups complete. Output: {output_filename}")
-    print("\n")
+            
+    print(f"  --  Appending aggregated device backups to {output_file}...")
+    with open(output_file, 'w') as f:
+        config.write(f)
+
+print(f"Success running {TITLE}!\n")
 
 if __name__ == "__main__":
     main()

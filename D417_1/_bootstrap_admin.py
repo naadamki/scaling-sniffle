@@ -1,53 +1,58 @@
 import argparse
-import configparser
 import sys
 import os
 import yaml
-from network_manager import EXOSManager
+from network_manager import DeviceManager
+# from network_manager import EXOSManager
 
-env_user = os.environ.get("EXOS_DEFAULT_USER", "admin")
-env_pass = os.environ.get("EXOS_DEFAULT_PASS", "1234")
-new_pass = os.environ.get("EXOS_NEW_PASS", "4321")
+ENV_USER = os.environ.get("DEF_USER", "admin")
+ENV_PASS = os.environ.get("DEF_PASS", "")
+NEW_PASS = os.environ.get("NEW_PASS", "")
+
+TITLE = "account password configuration bootstrap deployment"
 
 def parse_arguments():
-    """Handles terminal command line parameters explicitly."""
-    p = argparse.ArgumentParser(description="Network Device Configuration Backups.")
-    p.add_argument("inventory_file", help="Path to the building YAML inventory file.")
-    p.add_argument("closet", help="Specific closet grouping to inspect.")
+    # Handles terminal command line parameters explicitly.
+    p = argparse.ArgumentParser(description=f"Script for {TITLE}.")
+    p.add_argument("-i", "--inventory", help="Building Block YAML inventory file.", default="N-CoreA-01.yaml")
+    p.add_argument("-c", "--closet", help="Specific closet to inspect.", default="Access_Closet_1")
     return p.parse_args()
 
-def load_switches(file_path, closet_name):
+def load_inventory(inventory, closet):
     try:
-        with open(file_path, "r") as f:
+        with open(inventory, "r") as f:
             data = yaml.safe_load(f)
-            return data["closets"][closet_name]
+            try:
+                return data["inventory"][closet]
+            except:
+                print(f"  !!  {closet} not in {inventory}")
+                sys.exit(1)
     except Exception as e:
-        print(f"    !! Failed to load inventory: {e}")
+        print(f"  !!  Failed to load inventory.")
+        print(f"  !!  {e}")
         sys.exit(1)
 
 
 def main():
+    print(f"\nStarting {TITLE}...")
+
     args = parse_arguments()
-    switches = load_switches(args.inventory_file, args.closet)
+    inventory = load_inventory(args.inventory, args.closet)
 
-    for sw in switches:
+    for device in inventory:
         try:
-            with EXOSManager(sw, username=env_user, password=env_pass) as device:
-                try:
-                    command = f"configure account admin password {env_pass} {new_pass}"
-                    device.send_config(command)
-                    print(f"    -- Configured new password.")
-                except Exception as e:
-                    print(f"    !! {e}")
+            with DeviceManager(device, username=ENV_USER, password=ENV_PASS) as connection:
 
-                try:
-                    device.save_config_primary()
-                    print(f"    -- Saved configuration to device.")
-                except Exception as e:
-                    print(f"    !! {e}")
+                connection.configure_account_password(ENV_USER, ENV_PASS, NEW_PASS)
+                print(f"  --  Configured new password.")
 
-        except Exception:
-            print(f"    !! Switching to next device...")
+                connection.save_config_primary()
+                print(f"  --  Saved configuration to device.")
+
+        except Exception as e:
+            print(f"  !!  Process aborted for {device['hostname']}\n  !!  {e}")
+
+print(f"Success running {TITLE}!\n")
 
 if __name__ == "__main__":
     main()

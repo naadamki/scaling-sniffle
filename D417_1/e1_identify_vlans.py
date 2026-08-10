@@ -2,59 +2,61 @@ import argparse
 import sys
 import os
 import yaml
-from network_manager import EXOSManager
+from network_manager import DeviceManager
 
-env_user = os.environ.get("EXOS_DEFAULT_USER", "admin")
-env_pass = os.environ.get("EXOS_DEFAULT_PASS", "")
+ENV_USER = os.environ.get("DEF_USER", "admin")
+ENV_PASS = os.environ.get("DEF_PASS", "")
+
+TITLE = "network device VLAN configuration identification"
 
 def parse_arguments():
-    """Handles terminal command line parameters explicitly."""
-    p = argparse.ArgumentParser(description="Network Device VLAN Configuration Retrieval.")
-    p.add_argument("inventory_file", help="Path to the building YAML inventory file.")
-    p.add_argument("closet", help="Specific closet grouping to inspect.")
+    # Handles terminal command line parameters explicitly.
+    p = argparse.ArgumentParser(description=f"Script for {TITLE}.")
+    p.add_argument("-i", "--inventory", help="Building Block YAML inventory file.", default="N-CoreA-01.yaml")
+    p.add_argument("-c", "--closet", help="Specific closet to inspect.", default="Access_Closet_1")
     return p.parse_args()
 
-def load_inventory(file_path):
-    """Safely opens and reads the YAML architecture file."""
+def load_inventory(inventory, closet):
     try:
-        with open(file_path, "r") as file:
-            return yaml.safe_load(file)
-    except yaml.YAMLError as e:
-        print(f"!! YAML parsing error: {e}")
-        sys.exit(1)
-    except FileNotFoundError:
-        print(f"!! '{file_path}' not found.")
+        with open(inventory, "r") as f:
+            data = yaml.safe_load(f)
+            try:
+                return data["inventory"][closet]
+            except:
+                print(f"  !!  {closet} not in {inventory}")
+                sys.exit(1)
+    except Exception as e:
+        print(f"  !!  Failed to load inventory.")
+        print(f"  !!  {e}")
         sys.exit(1)
 
 def main():
+    print(f"\nStarting {TITLE}...")
+
     args = parse_arguments()
+    inventory = load_inventory(args.inventory, args.closet)
+    output_file = "e1_identify_vlans.txt"
 
-    print("\n")
-    print(f"Starting network device VLAN configuration retrieval...")    
-    devices = load_inventory(args.inventory_file)
-    
-    if args.closet not in devices["closets"]:
-        print(f"    !! ERROR: '{args.closet}' not found in {args.inventory_file}.")
-        sys.exit(1)
-        
-    all_devices = devices["closets"][args.closet]
+    for device in inventory:
+        try:
+            with DeviceManager(device, username=ENV_USER, password=ENV_PASS) as connection:
+                
+                parsed_vlans = connection.get_vlans(structured=True)                
+                vlans = [(item["vlan_name"], item["vlan_id"]) for item in parsed_vlans]
 
-    for sw in all_devices:
-        try:    
-            with EXOSManager(sw, username=env_user, password=env_pass) as device:
+                print(f"  --  {connection.hostname} ({connection.host}) VLAN configuration:\n")
+                
+                for name, id in vlans:
+                    print(f"  --  {name} (ID: {id})")
+                    
+                    with open(output_file, "a") as f:
+                        f.write(f"{connection.hostname} ({connection.host}): {vlans}")
 
-                output = device.get_vlans()
+        except Exception as e:
+            print(f"  !!  Process aborted for {device['hostname']}\n  !!  {e}")
 
-                print(f"    -- {device.hostname} ({device.host}) VLAN configuration:\n")
-                print(f"    -- {output}")
 
-        except Exception:
-            print(f"-- Skipping to next device...")
-            continue
-
-    print(f"Success! VLAN configuration retrieval complete.")
-    print("\n")
-
+print(f"Success running {TITLE}!\n")
 
 if __name__ == "__main__":
     main()

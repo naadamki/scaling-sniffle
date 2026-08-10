@@ -1,56 +1,48 @@
-
-
 import argparse
 import sys
 import os
 import yaml
-from network_manager import EXOSManager
+from network_manager import DeviceManager
+# from network_manager import EXOSManager
 
-env_user = os.environ.get("EXOS_DEFAULT_USER", "admin")
-env_pass = os.environ.get("EXOS_DEFAULT_PASS", "")
+ENV_USER = os.environ.get("DEF_USER", "admin")
+ENV_PASS = os.environ.get("DEF_PASS", "")
+
+TITLE = "network VLAN deployment verification"
 
 def parse_arguments():
-    """Handles terminal command line parameters explicitly."""
-    p = argparse.ArgumentParser(description="VLAN Verification Engine")
-    p.add_argument("inventory_file", help="Path to the building YAML inventory file.")
-    p.add_argument("closet", help="Specific closet grouping to verify.")
+    # Handles terminal command line parameters explicitly.
+    p = argparse.ArgumentParser(description=f"Script for {TITLE}.")
+    p.add_argument("-i", "--inventory", help="Building Block YAML inventory file.", default="N-CoreA-01.yaml")
+    p.add_argument("-c", "--closet", help="Specific closet to inspect.", default="Access_Closet_1")
     return p.parse_args()
 
-def load_inventory(file_path):
-    """Safely opens and reads the YAML architecture file."""
+def load_inventory(inventory, closet):
     try:
-        with open(file_path, "r") as file:
-            return yaml.safe_load(file)
-    except yaml.YAMLError as e:
-        print(f"!! YAML parsing error: {e}")
+        with open(inventory, "r") as f:
+            data = yaml.safe_load(f)
+            try:
+                return data["inventory"][closet]
+            except:
+                print(f"  !!  {closet} not in {inventory}")
+                sys.exit(1)
+    except Exception as e:
+        print(f"  !!  Failed to load inventory.\n  !!  {e}")
         sys.exit(1)
-    except FileNotFoundError:
-        print(f"!! '{file_path}' not found.")
-        sys.exit(1)
+
 
 def main():
+    print(f"\nStarting {TITLE}...")
+
     args = parse_arguments()
+    inventory = load_inventory(args.inventory, args.closet)
 
-    print("\n")
-    print(f"Starting VLAN Verification for {args.closet}")
-    devices = load_inventory(args.inventory_file)
-    
-    if args.closet not in devices["closets"]:
-        print(f"    !! ERROR: {args.closet} not found in {args.inventory_file}.")
-        sys.exit(1)
-        
-    all_devices = devices["closets"][args.closet]
-    access_switches = [sw for sw in all_devices if sw.get("role") == "access"]
-
-    try:
-        agg_switch = next(sw for sw in all_devices if sw.get("role") == "aggregate")
-    except StopIteration:
-        print(f"    !! ERROR: No aggregate switch found in inventory file.")
-        sys.exit(1)
+    access_switches = [sw for sw in inventory if sw.get("role") == "access"]
+    agg_switch = next(sw for sw in inventory if sw.get("role") == "aggregate")
 
     verification_summary = {}
 
-    print(f"Auditing Access Switches...")
+    print(f"--  Auditing Access Switches...")
     
     for sw in access_switches:
         v_id = sw.get("vlan_id")
@@ -60,48 +52,46 @@ def main():
         verification_summary[hostname] = "FAILED"
         
         try:
-            with EXOSManager(sw, username=env_user, password=env_pass) as acc:
+            with DeviceManager(sw, username=ENV_USER, password=ENV_PASS) as acc:
                 if acc.verify_vlan_exists(v_id, v_name):
                     verification_summary[hostname] = "PASSED"
                 else:
-                    print(f"    !! CRITICAL: {hostname} is missing {v_name} ({v_id}).")
+                    print(f"  !!  CRITICAL: {hostname} is missing {v_name} ({v_id}).")
         except Exception:
             verification_summary[hostname] = "UNREACHABLE"
-            print(f"    !! Skipping {hostname} could not connect.")
+            print(f"  !!  Skipping {hostname} could not connect.")
             
  
-    print(f"Auditing Aggregate Switch...")
+    print(f"--  Auditing Aggregate Switch...")
     
     agg_hostname = agg_switch.get("hostname")
     verification_summary[agg_hostname] = "PASSED"
     
     try:
-        with EXOSManager(agg_switch, username=env_user, password=env_pass) as agg:
+        with DeviceManager(agg_switch, username=ENV_USER, password=ENV_PASS) as agg:
             for sw in access_switches:
                 v_id = sw.get("vlan_id")
                 v_name = sw.get("vlan_name")
                 
                 if not agg.verify_vlan_exists(v_id, v_name):
-                    print(f"    !! CRITICAL: Aggregate core is missing {v_name} ({v_id}).")
+                    print(f"  !!  CRITICAL: Aggregate core is missing {v_name} ({v_id}).")
                     verification_summary[agg_hostname] = "PARTIAL_FAIL"
     except Exception:
         verification_summary[agg_hostname] = "UNREACHABLE"
-        print(f"    !! CRITICAL: Could not connect to Aggregate: {agg_hostname}")
+        print(f"  !!  CRITICAL: Could not connect to Aggregate: {agg_hostname}")
 
     print("FINAL VERIFICATION SUMMARY")
     
     overall_success = True
     for node, status in verification_summary.items():
-        print(f"    -- Device: {node.ljust(18)} -> Audit Status: [{status}]")
+        print(f"  --  Device: {node.ljust(18)} -> Audit Status: [{status}]")
         if status != "PASSED":
             overall_success = False
             
     if overall_success:
-        print(f"Success! Device VLAN configuration verification complete: PASSED")
-        print("\n")
+        print(f"Success! {TITLE} PASSED")
     else:
-        print(f"ERROR: Missing required VLAN configuration: FAILED")
-        print("\n")
+        print(f"ERROR: {TITLE} FAILED")
 
 if __name__ == "__main__":
     main()
