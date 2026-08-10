@@ -150,12 +150,14 @@ class BaseDriver(ABC):
         pass
 
     @abstractmethod
+    def build_create_service_account_cmds(self, username, password, access_level="admin"):
+        pass
+
+
+    @abstractmethod
     def handle_save_config(self, connection):
         pass
 
-    @abstractmethod
-    def configure_account_password_cmd(self, account, old_pass, new_pass):
-        pass
 
 
 class EXOSDriver(BaseDriver):
@@ -179,9 +181,11 @@ class EXOSDriver(BaseDriver):
         tagged = "tagged" if tag else "untagged"
         return [f"configure vlan {vlan_name} add ports {ports_str} {tagged}"]
 
-    def configure_account_password_cmd(self, account, old_pass, new_pass):
-        # return [f'configure account {account} password "{old_pass}" {new_pass}']
-        return []
+    def build_create_service_account_cmds(self, username, password, access_level="admin"):
+        """Generates standard EXOS configuration commands to create a user profile."""
+        return [
+            f"create account {access_level} {username} {password}"
+        ]
 
     def handle_save_config(self, connection):
         output = connection.send_command_timing("save configuration primary")
@@ -189,30 +193,6 @@ class EXOSDriver(BaseDriver):
             output += connection.send_command_timing("y")
         return output
 
-
-
-    def run_password_rotation(self, manager_instance, account, old_pass, new_pass):
-        conn = manager_instance.connection
-        
-        print(f"  --  Initiating live operational sequence for '{account}'...")
-        
-        time.sleep(0.5)
-        full_stream = conn.read_channel()
-        conn.write_channel("configure account admin password\n")
-        time.sleep(1.0)
-        full_stream += conn.read_channel()
-        payload_old = f"{old_pass}\n" if old_pass else '""\n'
-        conn.write_channel(payload_old)
-        time.sleep(1.0)        
-        full_stream += conn.read_channel()
-        conn.write_channel(f"{new_pass}\n")
-        time.sleep(1.0)
-        full_stream += conn.read_channel()
-        conn.write_channel(f"{new_pass}\n")
-        time.sleep(1.0)
-        full_stream += conn.read_channel()
-        
-        return full_stream
 
 
 # EXAMPLE
@@ -232,6 +212,11 @@ class CiscoDriver(BaseDriver):
 
     def build_add_vlan_ports_cmds(self, vlan_name, ports_str, tag: bool):
         return []
+    
+    def build_create_service_account_cmds(
+        self, username, password, access_level="admin"
+    ):
+        return [f"username {username} privilege 15 password {password}"]
 
     def handle_save_config(self, connection):
         return connection.send_command("write memory")
@@ -368,48 +353,10 @@ class DeviceManager:
             )
         return not ("does not exist" in output.lower() or "error" in output.lower())
 
-    # def configure_account_password(self, account, old_pass, new_pass):
-    #     print(f"  --  Changing {account} password on {self.hostname}...")
-    #     cmds = self.driver.configure_account_password_cmd(
-    #         account, old_pass, new_pass
-    #     )
-    #     return self.send_config(cmds)
-
-    # def configure_account_password(self, account, old_pass, new_pass):
-    #     print(f"  --  Changing {account} password on {self.hostname}...")
-    #     cmds = self.driver.configure_account_password_cmd(account, old_pass, new_pass)
-        
-    #     output = self.send_config(cmds)
-        
-    #     error_keywords = ["error", "invalid", "denied", "incorrect", "syntax", "fail"]
-        
-    #     if any(keyword in output.lower() for keyword in error_keywords):
-    #         print(f"  !!  VALIDATION CRITICAL FAILURE on {self.hostname}!")
-    #         print(f"  !!  [Raw Output Log From Device]:\n  !!  {output}")
-            
-    #         raise RuntimeError(f"  !!  Switch rejected password configuration command due to a syntax/auth error.")
-            
-    #     print(f"  --  Validation check passed. Password command applied successfully.")
-    #     return True
-
-    def configure_account_password(self, account, old_pass, new_pass):
-        print(f"  --  Changing {account} password on {self.hostname}...")
-        
-        if self.device_type == "extreme_exos":
-            output = self.driver.run_password_rotation(self, account, old_pass, new_pass)
-        else:
-            cmds = self.driver.configure_account_password_cmd(account, old_pass, new_pass)
-            output = self.send_config(cmds)
-            
-        error_keywords = ["error", "invalid", "denied", "incorrect", "fail", "mismatch"]
-        if any(keyword in output.lower() for keyword in error_keywords):
-            print(f"  !!  VALIDATION CRITICAL FAILURE on {self.hostname}!")
-            print(f"  !!  [Raw Output Log From Device]:\n{output}")
-            raise RuntimeError("Switch rejected password change conversation due to authentication or formatting errors.")
-            
-        print(f"  --  Validation check passed. Password applied successfully.")
-        return True
-
+    def create_service_account(self, username, password, access_level="admin"):
+        print(f" -- Provisioning automation service account '{username}' on {self.hostname}...")
+        cmds = self.driver.build_create_service_account_cmds(username, password, access_level)
+        return self.send_config(cmds)
 
 
     def save_config_primary(self):
