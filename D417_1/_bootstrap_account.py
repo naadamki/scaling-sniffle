@@ -5,15 +5,33 @@ import yaml
 from network_manager import DeviceManager
 
 ENV_USER = "admin"
-ENV_PASS = ""  # The target switches currently have a blank admin password
+ENV_PASS = ""
 
-# Define your persistent automation account credentials here
-SERVICE_USER = "net_automation"
-SERVICE_PASS = "SecureAutomationPassword2026!"
+SERVICE_USER = "net_auto"
+SERVICE_PASS = "SC123!"
 
 TITLE = "Service Account Deployment Provisioning Bootstrap"
 
-# ... keep your standard parse_arguments() and load_inventory() functions exactly as they were ...
+def parse_arguments():
+    # Handles terminal command line parameters explicitly.
+    p = argparse.ArgumentParser(description=f"Script for {TITLE}.")
+    p.add_argument("-i", "--inventory", help="Building Block YAML inventory file.", default="N-CoreA-01.yaml")
+    p.add_argument("-c", "--closet", help="Specific closet to inspect.", default="Access_Closet_1")
+    return p.parse_args()
+
+def load_inventory(inventory, closet):
+    try:
+        with open(inventory, "r") as f:
+            data = yaml.safe_load(f)
+            try:
+                return data["inventory"][closet]
+            except:
+                print(f"  !!  {closet} not in {inventory}")
+                sys.exit(1)
+    except Exception as e:
+        print(f"  !!  Failed to load inventory.")
+        print(f"  !!  {e}")
+        sys.exit(1)
 
 def main():
     print(f"\nStarting {TITLE}...")
@@ -23,21 +41,19 @@ def main():
     for device in inventory:
         device_label = device.get("hostname") or device.get("host") if isinstance(device, dict) else str(device)
         try:
-            # 1. Connect using the completely open, blank admin password
             with DeviceManager(device, username=ENV_USER, password=ENV_PASS) as connection:
                 
-                # 2. Deploy your new persistent service account cleanly via send_config
                 account_created = connection.create_service_account(SERVICE_USER, SERVICE_PASS)
                 
                 if account_created:
-                    print(f" -- Service account '{SERVICE_USER}' successfully built.")
+                    print(f"  --  Service account '{SERVICE_USER}' successfully built.")
                     connection.save_config_primary()
-                    print(f" -- Saved active configuration state.")
+                    print(f"  --  Saved active configuration state.")
                 else:
-                    print(f" !! Failed to deploy account on {connection.hostname}")
+                    print(f"  !!  Failed to deploy account on {connection.hostname}")
                     
         except Exception as e:
-            print(f" !! Process aborted for {device_label}\n !! {e}")
+            print(f"  !!  Process aborted for {device_label}\n !! {e}")
             
     print(f"\nSuccess running {TITLE}!\n")
 
