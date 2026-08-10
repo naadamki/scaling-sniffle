@@ -5,9 +5,9 @@ import yaml
 from network_manager import DeviceManager
 # from network_manager import EXOSManager
 
-ENV_USER = os.environ.get("DEF_USER", "admin")
-ENV_PASS = os.environ.get("DEF_PASS", "")
-NEW_PASS = os.environ.get("NEW_PASS", "")
+ENV_USER = "admin"
+ENV_PASS = ""
+NEW_PASS = "1234"
 
 TITLE = "account password configuration bootstrap deployment"
 
