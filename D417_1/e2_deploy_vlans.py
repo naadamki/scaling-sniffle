@@ -6,7 +6,7 @@ from network_manager import DeviceManager
 # from network_manager import EXOSManager
 
 ENV_USER = os.environ.get("DEF_USER", "admin")
-ENV_PASS = os.environ.get("DEF_PASS", "")
+ENV_PASS = os.environ.get("DEF_PASS", "1234")
 
 TITLE = "automated VLAN depoyment"
 
