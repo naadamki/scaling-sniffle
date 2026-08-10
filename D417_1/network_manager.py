@@ -179,7 +179,7 @@ class EXOSDriver(BaseDriver):
         return [f"configure vlan {vlan_name} add ports {ports_str} {tagged}"]
 
     def configure_account_password_cmd(self, account, old_pass, new_pass):
-        return [f"configure account {account} password {old_pass} {new_pass}"]
+        return [f'configure account {account} password "{old_pass}" {new_pass}']
 
     def handle_save_config(self, connection):
         output = connection.send_command_timing("save configuration primary")
@@ -280,7 +280,7 @@ class DeviceManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.connection:
             self.connection.disconnect()
-            print(f"  <<  Disconnected from {self.host}.")
+            print(f" <<  Disconnected from {self.host}.")
         return False
 
     def send_cmd(self, command, **kwargs):
@@ -290,20 +290,16 @@ class DeviceManager:
     def send_config(self, commands):
         if not commands:
             print(f"  --  No commands provided for execution on {self.hostname}.")
-            return False
+            return ""
         try:
-            print(
-                f"  --  Sending configuration commands to {self.hostname}..."
-            )
-            self.connection.send_config_set(
+            print(f"  --  Sending configuration commands to {self.hostname}...")
+            output = self.connection.send_config_set(
                 commands, cmd_verify=False, config_mode_command=""
             )
-            return True
+            return output
         except Exception as e:
-            print(
-                f"  !!  ERROR: Configuration deployment fault on {self.hostname}: {e}"
-            )
-            return False
+            print(f"  !!  ERROR: Configuration deployment fault on {self.hostname}.")
+            return f"  !!  {e}"
 
     def get_config(self):
         print(f"  --  Getting configuration of {self.hostname}...")
@@ -318,9 +314,7 @@ class DeviceManager:
         return self.connection.send_command(cmd)
 
     def create_vlan(self, vlan_id, vlan_name):
-        print(
-            f"  --  Creating VLAN {vlan_name} ({vlan_id}) on {self.hostname}..."
-        )
+        print(f"  --  Creating VLAN {vlan_name} ({vlan_id}) on {self.hostname}...")
         cmds = self.driver.build_create_vlan_cmds(vlan_id, vlan_name)
         return self.send_config(cmds)
 
@@ -339,23 +333,37 @@ class DeviceManager:
     def verify_vlan_exists(self, vlan_id=None, vlan_name=None) -> bool:
         identifier = str(vlan_id) if vlan_id is not None else vlan_name
         if not identifier:
-            raise ValueError(
-                "Must provide either vlan_id or vlan_name to verify."
-            )
+            raise ValueError("Must provide either vlan_id or vlan_name to verify.")
         print(f"  --  Verifying VLAN '{identifier}' on {self.hostname}...")
         output = self.connection.send_command(
             self.driver.get_vlan_verification_cmd(identifier)
-        )
-        return not (
-            "does not exist" in output.lower() or "error" in output.lower()
-        )
+            )
+        return not ("does not exist" in output.lower() or "error" in output.lower())
+
+    # def configure_account_password(self, account, old_pass, new_pass):
+    #     print(f"  --  Changing {account} password on {self.hostname}...")
+    #     cmds = self.driver.configure_account_password_cmd(
+    #         account, old_pass, new_pass
+    #     )
+    #     return self.send_config(cmds)
 
     def configure_account_password(self, account, old_pass, new_pass):
         print(f"  --  Changing {account} password on {self.hostname}...")
-        cmds = self.driver.configure_account_password_cmd(
-            account, old_pass, new_pass
-        )
-        return self.send_config(cmds)
+        cmds = self.driver.configure_account_password_cmd(account, old_pass, new_pass)
+        
+        output = self.send_config(cmds)
+        
+        error_keywords = ["error", "invalid", "denied", "incorrect", "syntax", "fail"]
+        
+        if any(keyword in output.lower() for keyword in error_keywords):
+            print(f"  !!  VALIDATION CRITICAL FAILURE on {self.hostname}!")
+            print(f"  !!  [Raw Output Log From Device]:\n  !!  {output}")
+            
+            raise RuntimeError(f"  !!  Switch rejected password configuration command due to a syntax/auth error.")
+            
+        print(f"  --  Validation check passed. Password command applied successfully.")
+        return True
+
 
     def save_config_primary(self):
         print(f"  --  Saving configuration for {self.hostname}...")

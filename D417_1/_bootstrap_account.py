@@ -41,7 +41,7 @@ def main():
 
     for device in inventory:
         try:
-            with DeviceManager(device, username=ENV_USER, password=ENV_PASS) as connection:
+            with DeviceManager(device, device_type=None, username=ENV_USER, password=ENV_PASS) as connection:
 
                 connection.configure_account_password(ENV_USER, ENV_PASS, NEW_PASS)
                 print(f"  --  Configured new password.")
@@ -56,13 +56,6 @@ print(f"Success running {TITLE}!\n")
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
 
 
 
