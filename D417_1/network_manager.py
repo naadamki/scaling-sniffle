@@ -179,13 +179,30 @@ class EXOSDriver(BaseDriver):
         return [f"configure vlan {vlan_name} add ports {ports_str} {tagged}"]
 
     def configure_account_password_cmd(self, account, old_pass, new_pass):
-        return [f'configure account {account} password "{old_pass}" {new_pass}']
+        # return [f'configure account {account} password "{old_pass}" {new_pass}']
+        return []
 
     def handle_save_config(self, connection):
         output = connection.send_command_timing("save configuration primary")
         if "save configuration to" in output.lower() or "(y/n)" in output.lower():
             output += connection.send_command_timing("y")
         return output
+
+    def run_password_rotation(self, manager_instance, account, old_pass, new_pass):
+        """Forces an operational timing prompt sequence to clear EXOS security blocks."""
+        conn = manager_instance.connection
+        prompt = manager_instance.hostname
+        
+        print(f" -- Initiating live operational sequence for '{account}'...")
+        out1 = conn.send_command("configure account admin password", expect_string=r"[Oo]ld\s+[Pp]assword|:")
+        payload_old = old_pass if old_pass else "\n"
+        out2 = conn.send_command(payload_old, expect_string=r"[Nn]ew\s+[Pp]assword|:")
+        out3 = conn.send_command(new_pass, expect_string=r"[Rr]eenter|[Cc]onfirm|:")
+        final_output = conn.send_command(new_pass, expect_string=fr"{prompt}")
+        
+        return f"{out1}\n{out2}\n{out3}\n{final_output}"
+
+
 
 # EXAMPLE
 class CiscoDriver(BaseDriver):
@@ -280,7 +297,7 @@ class DeviceManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.connection:
             self.connection.disconnect()
-            print(f" <<  Disconnected from {self.host}.")
+            print(f"  <<  Disconnected from {self.host}.")
         return False
 
     def send_cmd(self, command, **kwargs):
@@ -347,22 +364,41 @@ class DeviceManager:
     #     )
     #     return self.send_config(cmds)
 
+    # def configure_account_password(self, account, old_pass, new_pass):
+    #     print(f"  --  Changing {account} password on {self.hostname}...")
+    #     cmds = self.driver.configure_account_password_cmd(account, old_pass, new_pass)
+        
+    #     output = self.send_config(cmds)
+        
+    #     error_keywords = ["error", "invalid", "denied", "incorrect", "syntax", "fail"]
+        
+    #     if any(keyword in output.lower() for keyword in error_keywords):
+    #         print(f"  !!  VALIDATION CRITICAL FAILURE on {self.hostname}!")
+    #         print(f"  !!  [Raw Output Log From Device]:\n  !!  {output}")
+            
+    #         raise RuntimeError(f"  !!  Switch rejected password configuration command due to a syntax/auth error.")
+            
+    #     print(f"  --  Validation check passed. Password command applied successfully.")
+    #     return True
+
     def configure_account_password(self, account, old_pass, new_pass):
         print(f"  --  Changing {account} password on {self.hostname}...")
-        cmds = self.driver.configure_account_password_cmd(account, old_pass, new_pass)
         
-        output = self.send_config(cmds)
-        
-        error_keywords = ["error", "invalid", "denied", "incorrect", "syntax", "fail"]
-        
+        if self.device_type == "extreme_exos":
+            output = self.driver.run_password_rotation(self, account, old_pass, new_pass)
+        else:
+            cmds = self.driver.configure_account_password_cmd(account, old_pass, new_pass)
+            output = self.send_config(cmds)
+            
+        error_keywords = ["error", "invalid", "denied", "incorrect", "fail", "mismatch"]
         if any(keyword in output.lower() for keyword in error_keywords):
             print(f"  !!  VALIDATION CRITICAL FAILURE on {self.hostname}!")
-            print(f"  !!  [Raw Output Log From Device]:\n  !!  {output}")
+            print(f"  !!  [Raw Output Log From Device]:\n{output}")
+            raise RuntimeError("Switch rejected password change conversation due to authentication or formatting errors.")
             
-            raise RuntimeError(f"  !!  Switch rejected password configuration command due to a syntax/auth error.")
-            
-        print(f"  --  Validation check passed. Password command applied successfully.")
+        print(f"  --  Validation check passed. Password applied successfully.")
         return True
+
 
 
     def save_config_primary(self):
