@@ -1,6 +1,7 @@
 import os
 from netmiko import ConnectHandler
 from abc import ABC, abstractmethod
+import time
 
 # First implementation...then evolved into a more abstract and DRY form
 class EXOSManager:
@@ -188,10 +189,7 @@ class EXOSDriver(BaseDriver):
             output += connection.send_command_timing("y")
         return output
 
-import time
 
-class EXOSDriver(BaseDriver):
-    # ... keep your other abstract methods exactly the same ...
 
     def run_password_rotation(self, manager_instance, account, old_pass, new_pass):
         conn = manager_instance.connection
