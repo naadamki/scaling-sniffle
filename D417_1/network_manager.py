@@ -201,7 +201,7 @@ class EXOSDriver(BaseDriver):
         conn.write_channel("configure account admin password\n")
         time.sleep(1.0)
         full_stream += conn.read_channel()
-        payload_old = f"{old_pass}\n" if old_pass else "\n"
+        payload_old = f"{old_pass}\n" if old_pass else '""\n'
         conn.write_channel(payload_old)
         time.sleep(1.0)        
         full_stream += conn.read_channel()
