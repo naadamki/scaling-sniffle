@@ -35,7 +35,7 @@ def main():
 
     args = parse_arguments()
     inventory = load_inventory(args.inventory, args.closet)
-    output_file = "e1_identify_vlans.txt"
+    output_file = "e1_identify_vlans_output.txt"
 
     for device in inventory:
         try:
