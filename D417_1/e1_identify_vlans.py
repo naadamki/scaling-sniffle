@@ -5,7 +5,7 @@ import yaml
 from network_manager import DeviceManager
 
 ENV_USER = os.environ.get("DEF_USER", "admin")
-ENV_PASS = os.environ.get("DEF_PASS", "1234")
+ENV_PASS = os.environ.get("DEF_PASS", "")
 
 TITLE = "network device VLAN configuration identification"
 
