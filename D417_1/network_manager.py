@@ -189,15 +189,14 @@ class EXOSDriver(BaseDriver):
         return output
 
     def run_password_rotation(self, manager_instance, account, old_pass, new_pass):
-        """Forces an operational timing prompt sequence to clear EXOS security blocks."""
         conn = manager_instance.connection
         prompt = manager_instance.hostname
         
         print(f" -- Initiating live operational sequence for '{account}'...")
-        out1 = conn.send_command("configure account admin password", expect_string=r"[Oo]ld\s+[Pp]assword|:")
+        out1 = conn.send_command("configure account admin password", expect_string=r"[Cc]urrent|[Pp]assword:")
         payload_old = old_pass if old_pass else "\n"
         out2 = conn.send_command(payload_old, expect_string=r"[Nn]ew\s+[Pp]assword|:")
-        out3 = conn.send_command(new_pass, expect_string=r"[Rr]eenter|[Cc]onfirm|:")
+        out3 = conn.send_command(new_pass, expect_string=r"[Rr]eenter\s+[Pp]assword|:")
         final_output = conn.send_command(new_pass, expect_string=fr"{prompt}")
         
         return f"{out1}\n{out2}\n{out3}\n{final_output}"
@@ -404,3 +403,7 @@ class DeviceManager:
     def save_config_primary(self):
         print(f"  --  Saving configuration for {self.hostname}...")
         return self.driver.handle_save_config(self.connection)
+
+
+
+
