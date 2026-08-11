@@ -316,12 +316,9 @@ class DeviceManager:
         print(f"--  Getting configuration of {self.hostname}...")
         return self.connection.send_command(self.driver.get_config_cmd())
 
-    def get_vlans(self, structured=False):
+    def get_vlans(self):
         print(f"--  Getting VLAN configuration of {self.hostname}...")
         cmd = self.driver.get_vlans_cmd()
-
-        if structured:
-            return self.connection.send_command(cmd, use_textfsm=True)
         return self.connection.send_command(cmd)
 
     def create_vlan(self, vlan_id, vlan_name):

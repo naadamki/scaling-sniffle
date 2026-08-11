@@ -1,6 +1,7 @@
 import argparse
 import sys
 import os
+import re
 import yaml
 from network_manager import DeviceManager
 
@@ -30,6 +31,35 @@ def load_inventory(inventory, closet):
         print(f"!!  {e}")
         sys.exit(1)
 
+import re
+
+
+def parse_exos_vlan(raw_cli_output):
+    vlan_list = []
+
+    pattern = re.compile(
+        r"^(?P<name>\S+)\s+"
+        r"(?P<vid>\d+)\s+"
+        r"(?:(?P<ip>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+)?\s*"
+        r"(?:/(?P<mask>\d+)\s+)?\s*"
+        r"(?P<flags>[-a-zA-Z]{27})\s+"
+        r"(?P<protocol>\S+)\s+"
+        r"(?P<active_ports>\d+)\s*/(?P<total_ports>\d+)\s+"
+        r"(?P<vr>\S+)",
+        re.MULTILINE,
+    )
+
+    for match in pattern.finditer(raw_cli_output):
+        vlan_data = match.groupdict()
+        if vlan_data["ip"] and vlan_data["mask"]:
+            vlan_data["ip_address"] = f"{vlan_data['ip']}/{vlan_data['mask']}"
+        else:
+            vlan_data["ip_address"] = None
+        del vlan_data["ip"]
+        del vlan_data["mask"]
+        vlan_list.append(vlan_data)
+    return vlan_list        
+
 def main():
     print(f"\nStarting {TITLE}...")
 
@@ -41,8 +71,8 @@ def main():
         device_label = device.get("hostname") or device.get("host") if isinstance(device, dict) else str(device)
         try:
             with DeviceManager(device, username=ENV_USER, password=ENV_PASS) as connection:                
-                parsed_vlans = connection.get_vlans(structured=True)                
-
+                raw_vlans = connection.get_vlans()                
+                parsed_vlans = parse_exos_vlan(raw_vlans)
                 print(f"--  {connection.hostname} ({connection.host}) VLAN configuration:\n")
 
                 print(parsed_vlans)                
