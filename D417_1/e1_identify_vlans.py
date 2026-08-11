@@ -45,12 +45,8 @@ def main():
                 vlans = [(item["vlan_name"], item["vlan_id"]) for item in parsed_vlans]
 
                 print(f"--  {connection.hostname} ({connection.host}) VLAN configuration:\n")
-                
-                for name, id in vlans:
-                    print(f"  --  {name} (ID: {id})")
-                    
-                    with open(output_file, "a") as f:
-                        f.write(f"{connection.hostname} ({connection.host}): {name} (ID: {id})")
+
+                print(vlans)                
 
         except Exception as e:
             print(f"!!  Process aborted for {device_label}\n!!  {e}")
