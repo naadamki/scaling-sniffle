@@ -37,6 +37,19 @@ import re
 def parse_exos_vlan(raw_cli_output):
     vlan_list = []
 
+    # [
+    #     {
+    #         'name': 'Default', 
+    #         'vid': '1', 
+    #         'flags': '------------T--------------', 
+    #         'protocol': 'ANY', 
+    #         'active_ports': '2', 
+    #         'total_ports': '12', 
+    #         'vr': 'VR-Default', 
+    #         'ip_address': '10.10.1.22/24'
+    #     },
+    # ]
+
     pattern = re.compile(
         r"^(?P<name>\S+)\s+"
         r"(?P<vid>\d+)\s+"
@@ -58,7 +71,17 @@ def parse_exos_vlan(raw_cli_output):
         del vlan_data["ip"]
         del vlan_data["mask"]
         vlan_list.append(vlan_data)
-    return vlan_list        
+
+    summary = [
+        {
+            'name': vlan['name'],
+            'vid': vlan['vid'],
+            'ip': vlan['ip_address'],
+        }
+        for vlan in vlan_list
+    ]
+
+    return summary
 
 def main():
     print(f"\nStarting {TITLE}...")
@@ -75,7 +98,8 @@ def main():
                 parsed_vlans = parse_exos_vlan(raw_vlans)
                 print(f"--  {connection.hostname} ({connection.host}) VLAN configuration:\n")
 
-                print(parsed_vlans)                
+                for vlan in parsed_vlans:
+                    print(f"----{vlan['name']} ({vlan['vid']}): {vlan['ip']}")
 
         except Exception as e:
             print(f"!!  Process aborted for {device_label}\n!!  {e}")
