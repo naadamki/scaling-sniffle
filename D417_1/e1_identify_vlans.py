@@ -42,11 +42,10 @@ def main():
         try:
             with DeviceManager(device, username=ENV_USER, password=ENV_PASS) as connection:                
                 parsed_vlans = connection.get_vlans(structured=True)                
-                vlans = [(item["vlan_name"], item["vlan_id"]) for item in parsed_vlans]
 
                 print(f"--  {connection.hostname} ({connection.host}) VLAN configuration:\n")
 
-                print(vlans)                
+                print(parsed_vlans)                
 
         except Exception as e:
             print(f"!!  Process aborted for {device_label}\n!!  {e}")
