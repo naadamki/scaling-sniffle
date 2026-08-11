@@ -4,10 +4,13 @@ import os
 import yaml
 from network_manager import DeviceManager
 
-ENV_USER = os.environ.get("SVC_USER", "netsvc")
-ENV_PASS = os.environ.get("SVC_PASS", "")
+ENV_USER = "admin"
+ENV_PASS = ""
 
-TITLE = "network device VLAN configuration identification"
+SVC_USER = "netsvc"
+SVC_PASS = "SVC123"
+
+TITLE = "service account deployment bootstrap"
 
 def parse_arguments():
     # Handles terminal command line parameters explicitly.
@@ -32,31 +35,27 @@ def load_inventory(inventory, closet):
 
 def main():
     print(f"\nStarting {TITLE}...")
-
     args = parse_arguments()
     inventory = load_inventory(args.inventory, args.closet)
-    output_file = "e1_identify_vlans_output.txt"
-
+    
     for device in inventory:
         device_label = device.get("hostname") or device.get("host") if isinstance(device, dict) else str(device)
         try:
-            with DeviceManager(device, username=ENV_USER, password=ENV_PASS) as connection:                
-                parsed_vlans = connection.get_vlans(structured=True)                
-                vlans = [(item["vlan_name"], item["vlan_id"]) for item in parsed_vlans]
-
-                print(f"--  {connection.hostname} ({connection.host}) VLAN configuration:\n")
+            with DeviceManager(device, username=ENV_USER, password=ENV_PASS) as connection:
                 
-                for name, id in vlans:
-                    print(f"  --  {name} (ID: {id})")
+                account_created = connection.create_service_account(SVC_USER, SVC_PASS)
+                
+                if account_created:
+                    print(f"--  Service account '{SVC_USER}' successfully built.")
+                    connection.save_config_primary()
+                    print(f"--  Saved active configuration state.")
+                else:
+                    print(f"!!  Failed to deploy account on {connection.hostname}")
                     
-                    with open(output_file, "a") as f:
-                        f.write(f"{connection.hostname} ({connection.host}): {name} (ID: {id})")
-
         except Exception as e:
-            print(f"!!  Process aborted for {device_label}\n!!  {e}")
-
-
-print(f"Success running {TITLE}!\n")
+            print(f"!!  Process aborted for {device_label}\n !! {e}")
+            
+    print(f"\nSuccess running {TITLE}!\n")
 
 if __name__ == "__main__":
     main()

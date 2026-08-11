@@ -7,10 +7,10 @@ from network_manager import DeviceManager
 ENV_USER = "admin"
 ENV_PASS = ""
 
-SERVICE_USER = "net_auto"
-SERVICE_PASS = "SC123!"
+SVC_USER = "netsvc"
+SVC_PASS = "SVC123"
 
-TITLE = "Service Account Deployment Provisioning Bootstrap"
+TITLE = "service account deployment bootstrap"
 
 def parse_arguments():
     # Handles terminal command line parameters explicitly.
@@ -26,11 +26,11 @@ def load_inventory(inventory, closet):
             try:
                 return data["inventory"][closet]
             except:
-                print(f"  !!  {closet} not in {inventory}")
+                print(f"!!  {closet} not in {inventory}")
                 sys.exit(1)
     except Exception as e:
-        print(f"  !!  Failed to load inventory.")
-        print(f"  !!  {e}")
+        print(f"!!  Failed to load inventory.")
+        print(f"!!  {e}")
         sys.exit(1)
 
 def main():
@@ -43,17 +43,17 @@ def main():
         try:
             with DeviceManager(device, username=ENV_USER, password=ENV_PASS) as connection:
                 
-                account_created = connection.create_service_account(SERVICE_USER, SERVICE_PASS)
+                account_created = connection.create_service_account(SVC_USER, SVC_PASS)
                 
                 if account_created:
-                    print(f"  --  Service account '{SERVICE_USER}' successfully built.")
+                    print(f"--  Service account '{SVC_USER}' successfully built.")
                     connection.save_config_primary()
-                    print(f"  --  Saved active configuration state.")
+                    print(f"--  Saved active configuration state.")
                 else:
-                    print(f"  !!  Failed to deploy account on {connection.hostname}")
+                    print(f"!!  Failed to deploy account on {connection.hostname}")
                     
         except Exception as e:
-            print(f"  !!  Process aborted for {device_label}\n !! {e}")
+            print(f"!!  Process aborted for {device_label}\n !! {e}")
             
     print(f"\nSuccess running {TITLE}!\n")
 
