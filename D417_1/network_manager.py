@@ -4,9 +4,6 @@ import yaml
 import re
 
 
-
-import re
-
 def parse_exos_show_vlan(raw_cli_output):
     vlan_list = []
 
@@ -37,18 +34,6 @@ def parse_exos_show_vlan(raw_cli_output):
         })
         
     return vlan_list
-    # [
-    #     {
-    #         'name': 'Default', 
-    #         'vid': '1', 
-    #         'flags': '------------T--------------', 
-    #         'protocol': 'ANY', 
-    #         'active_ports': '2', 
-    #         'total_ports': '12', 
-    #         'vr': 'VR-Default', 
-    #         'ip_address': '10.10.1.22/24'
-    #     },
-    # ]
 
 
 
@@ -303,7 +288,6 @@ class DeviceManager:
             if not self.hostname or self.hostname == self.host:
                 self.hostname = self.connection.base_prompt.rstrip(" #> ").strip()
             self.connection.send_command("disable clipaging")
-            print(f"--  Connected to {self.hostname}.")
             return self
         except Exception as e:
             print(f"!!  Connection failure to {self.host}: {e}")
@@ -311,8 +295,8 @@ class DeviceManager:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.connection:
+            print(f"<<  Disconnecting from {self.host}.\n")            
             self.connection.disconnect()
-            print(f"<<  Disconnected from {self.host}.\n")
         return False
 
     def send_cmd(self, command, **kwargs):
@@ -334,11 +318,11 @@ class DeviceManager:
             return f"!!  {e}"
 
     def get_config(self):
-        print(f"--  Getting configuration of {self.hostname}...")
+        print(f"--  Getting configuration for {self.hostname}...")
         return self.connection.send_command(self.driver.get_config_cmd())
 
     def get_vlans(self, parse=True):
-        print(f"--  Getting VLAN configuration of {self.hostname}...")
+        print(f"--  Getting VLAN configuration for {self.hostname}...")
         cmd = self.driver.get_vlans_cmd()
         raw_output = self.connection.send_command(cmd)
 

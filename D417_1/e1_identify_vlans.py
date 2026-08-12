@@ -35,7 +35,7 @@ def main():
                 print(f"--  {connection.hostname} ({connection.host}) VLAN configuration:")
 
                 for vlan in vlans:
-                    print(f"    - {vlan['name']} ({vlan['vid']}): {vlan['ip_address']}")
+                    print(f"    - {vlan['name']} ({vlan['vid']})")
 
         except Exception as e:
             print(f"!!  Process aborted for {hostname}\n!!  {e}")

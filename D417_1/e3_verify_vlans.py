@@ -56,14 +56,14 @@ def main():
                         "verified": is_present
                     })
 
-                print(f"\n--  Verification Report for {connection.hostname} ({connection.host}):")
+                print(f"--  Verification Report for {connection.hostname} ({connection.host}):")
                 device_healthy = True
                 
                 for result in verification_results:
                     if result["verified"]:
-                        print(f"    PASS: VLAN {result['vlan_name']} (ID: {result['vlan_id']}) is active.")
+                        print(f"    - PASS: VLAN {result['vlan_name']} (ID: {result['vlan_id']}) is active.")
                     else:
-                        print(f"    FAIL: VLAN {result['vlan_name']} (ID: {result['vlan_id']}) is MISSING.")
+                        print(f"    - FAIL: VLAN {result['vlan_name']} (ID: {result['vlan_id']}) is MISSING.")
                         device_healthy = False
 
                 if device_healthy:
