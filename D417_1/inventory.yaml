@@ -1,0 +1,20 @@
+all:
+  children:
+    Access_Closet_1:
+      hosts:
+        ACCT_Network:
+          ansible_host: 10.10.1.20
+        IT_Network:
+          ansible_host: 10.10.1.21
+        Local_Switch:
+          ansible_host: 10.10.1.22
+        MGMT_Network:
+          ansible_host: 10.10.1.23
+        User_Network:
+          ansible_host: 10.10.1.24
+      vars:
+        ansible_network_os: extreme.exos
+        ansible_connection: ansible.netcommon.network_cli
+        ansible_user: netsvc
+        ansible_password: SVC123
+        ansible_ssh_common_args: '-o PubkeyAcceptedAlgorithms=+ssh-rsa -o HostKeyAlgorithms=+ssh-rsa'
