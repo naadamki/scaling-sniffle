@@ -1,6 +1,6 @@
 """
-Script Name: backup_configs.py
-Purpose: Automates the backup of configuration data across 
+Script Name: deploy_service_account.py
+Purpose: Automates the provisioning of administrative service accounts across 
          targeted network devices within a specific building block inventory closet.
 Target Environment: ExtremeXOS (EXOS) Switch Infrastructure
 Architecture Note: Leverages the custom 'network_manager' module 
@@ -9,16 +9,17 @@ Architecture Note: Leverages the custom 'network_manager' module
 
 import argparse
 import os
-import configparser
 from network_manager import InventoryManager, DeviceManager
 
 # --- ENVIRONMENT CONFIGURATION ---
-# Retrieve default service account credentials from environment variables 
-# with safe fallback values to prevent hardcoded secrets.
-ENV_USER = os.environ.get("DEF_USER", "netsvc")
-ENV_PASS = os.environ.get("DEF_PASS", "SVC123")
+# Retrieve default administrative credentials and target service account details 
+# from environment variables with safe fallback values to prevent hardcoded secrets.
+ENV_USER = os.environ.get("DEF_USER", "admin")
+ENV_PASS = os.environ.get("DEF_PASS", "")
+SVC_USER = os.environ.get("SVC_USER", "netsvc")
+SVC_PASS = os.environ.get("SVC_PASS", "SVC123")
 
-TITLE = "network device configuration backup"
+TITLE = "service account deployment"
 
 
 def parse_arguments():
@@ -43,57 +44,47 @@ def parse_arguments():
 def main():
     """
     Main execution loop. Iterates through the targeted device inventory, 
-    establishes secure connections, retrieves configuration data, and 
-    writes the aggregated data to an INI output file.
+    establishes secure connections, provisions the service account, and 
+    persists the active configuration state to primary flash.
     """
     print(f"\nStarting {TITLE}...")
 
     args = parse_arguments()
     inventory = InventoryManager(args.inventory, args.closet)
-    output_file = "d1_backup_configs_output.ini"
-    config = configparser.ConfigParser()
-
+    
     # Iterate sequentially through each network element in the inventory group
     for device in inventory.devices:
         # Safely extract the hostname regardless of whether the inventory entry 
         # is formatted as a structured dictionary or a raw string value.
         hostname = (
-            device.get("hostname") or device.get("host")
-            if isinstance(device, dict)
+            device.get("hostname") or device.get("host") 
+            if isinstance(device, dict) 
             else str(device)
         )
-
+        
         try:
             # Use a context manager to ensure proper socket/SSH connection cleanup 
             # even if exceptions occur midway through execution.
             with DeviceManager(
                 device, username=ENV_USER, password=ENV_PASS
             ) as connection:
-
-                # Attempt to retrieve the raw configuration data from the device
-                configuration_output = connection.get_config()
-
-                if configuration_output:
-                    # Populate the ConfigParser object with device metadata and configuration text
-                    config[hostname] = {
-                        "Hostname": hostname,
-                        "IP Address": connection.host,
-                        "Configuration": configuration_output,
-                    }
-                    print(f"--  {hostname} configuration backup collected.")
+                
+                # Attempt to provision the service account
+                account_created = connection.create_account(username=SVC_USER, password=SVC_PASS, access_level="admin")
+                
+                if account_created:
+                    print(f"--  Service account '{SVC_USER}' successfully built on {hostname}.")
+                    # Commit running configuration to non-volatile primary storage
+                    connection.save_config_primary()
+                    print(f"--  Saved active configuration state for {hostname}.")
                 else:
-                    print(f"!!  Failed to retrieve configuration for {hostname}")
-
+                    print(f"!!  Failed to deploy account on {connection.hostname}")
+                    
         except Exception as e:
             # Gracefully catch connection timeouts, authentication failures, or socket drops 
             # to prevent the bulk script from crashing mid-run.
             print(f"!!  Process aborted for {hostname}\n !! Error details: {e}")
-
-    # Write aggregated configuration data from all reachable devices into the output INI file
-    print(f"--  Writing aggregated device backups to {output_file}...")
-    with open(output_file, "w") as f:
-        config.write(f)
-
+            
     print(f"\nSuccess running {TITLE}!\n")
 
 
