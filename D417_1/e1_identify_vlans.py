@@ -74,7 +74,7 @@ def main():
                 print(f"--  {connection.hostname} ({connection.host}) VLAN Configuration:")
                 # Loop through each individual VLAN entry and print its name and ID
                 for vlan in vlans:
-                    print(f"    - {vlan['name']} (VID: {vlan['vid']})")
+                    print(f"    - {vlan['vlan_name']} (VID: {vlan['vlan_id']})")
 
         except Exception as e:
             # Gracefully catch connection timeouts, authentication failures, or socket drops 
