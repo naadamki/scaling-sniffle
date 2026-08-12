@@ -1,11 +1,11 @@
 import argparse
+import os
 from network_manager import InventoryManager, DeviceManager
 
-ENV_USER = "admin"
-ENV_PASS = ""
-
-SVC_USER = "netsvc"
-SVC_PASS = "SVC123"
+ENV_USER = os.environ.get("DEF_USER", "admin")
+ENV_PASS = os.environ.get("DEF_PASS", "")
+SVC_USER = os.environ.get("SVC_USER", "netsvc")
+SVC_PASS = os.environ.get("SVC_PASS", "SVC123")
 
 TITLE = "service account deployment bootstrap"
 

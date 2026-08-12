@@ -4,9 +4,9 @@
   gather_facts: no
   
   tasks:
-    - name: Provision Local-Admin account interactively
+    - name: Provision Local-Admin account 
       ansible.netcommon.cli_command:
-        command: "create account admin Test1 WGU123"
+        command: "create account admin Local-Admin WGU123"
 
     - name: Save configuration to primary
       ansible.netcommon.cli_command:
