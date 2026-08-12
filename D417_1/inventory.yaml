@@ -13,7 +13,7 @@ all:
         User_Network:
           ansible_host: 10.10.1.24
       vars:
-        ansible_network_os: extreme.exos
+        ansible_network_os: community.network.exos
         ansible_connection: ansible.netcommon.network_cli
         ansible_user: netsvc
         ansible_password: SVC123
