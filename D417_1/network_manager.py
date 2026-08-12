@@ -312,7 +312,7 @@ class DeviceManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.connection:
             self.connection.disconnect()
-            print(f"<<  Disconnected from {self.host}.")
+            print(f"<<  Disconnected from {self.host}.\n")
         return False
 
     def send_cmd(self, command, **kwargs):
