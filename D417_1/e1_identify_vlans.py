@@ -32,7 +32,7 @@ def main():
                 device, username=ENV_USER, password=ENV_PASS
             ) as connection:
                 vlans = connection.get_vlans(parse=True)
-                print(f"-- {connection.hostname} ({connection.host}) VLAN configuration:")
+                print(f"--  {connection.hostname} ({connection.host}) VLAN configuration:")
 
                 for vlan in vlans:
                     print(f"    - {vlan['name']} ({vlan['vid']}): {vlan['ip_address']}")

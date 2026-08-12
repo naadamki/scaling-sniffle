@@ -296,6 +296,7 @@ class DeviceManager:
             self.connection = ConnectHandler(**clean_params)
             if not self.hostname or self.hostname == self.host:
                 self.hostname = self.connection.base_prompt.rstrip(" #> ").strip()
+            self.connection.send_command("disable clipaging")
             print(f"--  Connected to {self.hostname}.")
             return self
         except Exception as e:
