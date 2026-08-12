@@ -19,7 +19,6 @@ def main():
 
     args = parse_arguments()
     inventory = InventoryManager(args.inventory, args.closet)
-    
     vlan_map = inventory.build_required_vlan_map()
 
     for device in inventory.devices:
@@ -28,8 +27,8 @@ def main():
             if isinstance(device, dict)
             else str(device)
         )        
-        targets_to_provision = vlan_map.get(hostname, [])
 
+        targets_to_provision = vlan_map.get(hostname, [])
         if not targets_to_provision:
             print(f"-- Skipping {hostname}: No provisioning required.")
             continue
@@ -54,6 +53,7 @@ def main():
                         connection.add_vlan_ports(vlan_name, untagged_ports, tag=False)
 
                 connection.save_config_primary()
+                
         except Exception as e:
             print(f"!!  Process aborted for {hostname}\n!!  {e}")
 

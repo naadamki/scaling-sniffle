@@ -2,11 +2,13 @@
 - name: Create Local-Admin Read/Write Account on EXOS Switches
   hosts: Access_Closet_1
   gather_facts: no
+  vars_files:
+    - vault.yml
   
   tasks:
     - name: Provision Local-Admin account 
       ansible.netcommon.cli_command:
-        command: "create account admin Local-Admin WGU123"
+        command: "create account admin Local-Admin {{ vault_admin_password }}"
 
     - name: Save configuration to primary
       ansible.netcommon.cli_command:

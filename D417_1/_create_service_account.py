@@ -7,12 +7,12 @@ ENV_PASS = os.environ.get("DEF_PASS", "")
 SVC_USER = os.environ.get("SVC_USER", "netsvc")
 SVC_PASS = os.environ.get("SVC_PASS", "SVC123")
 
-TITLE = "service account deployment bootstrap"
+TITLE = "account deployment"
 
 def parse_arguments():
     # Handles terminal command line parameters explicitly.
     p = argparse.ArgumentParser(description=f"Script for {TITLE}.")
-    p.add_argument("-i", "--inventory", help="Building Block YAML inventory file.", default="N-CoreA-01.yaml")
+    p.add_argument("-i", "--inventory", help="Building Block YAML inventory file.",default="N-CoreA-01.yaml")
     p.add_argument("-c", "--closet", help="Specific closet to inspect.", default="Access_Closet_1")
     return p.parse_args()
 
@@ -28,12 +28,13 @@ def main():
             if isinstance(device, dict) 
             else str(device)
         )
+        
         try:
             with DeviceManager(
                 device, username=ENV_USER, password=ENV_PASS
                 ) as connection:
                 
-                account_created = connection.create_service_account(SVC_USER, SVC_PASS)
+                account_created = connection.create_account(SVC_USER, SVC_PASS, "admin")
                 
                 if account_created:
                     print(f"--  Service account '{SVC_USER}' successfully built.")

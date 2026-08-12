@@ -25,8 +25,8 @@ def parse_exos_show_vlan(raw_cli_output):
             ip_addr = None
             
         vlan_list.append({
-            "name": data["name"],
-            "vid": data["vid"],
+            "vlan_name": data["name"],
+            "vlan_id": data["vid"],
             "ip_address": ip_addr,
             "active_ports": data["active_ports"],
             "total_ports": data["total_ports"],
@@ -78,39 +78,23 @@ class InventoryManager:
     def access_switches(self):
         return [dev for dev in self.devices if dev.get('role') == 'access']
 
-    # def get_vlan_definitions(self):
-    #     vlan_configs = []
-    #     for dev in self.devices:
-    #         vlan_id = dev.get('vlan_id', 0)
-    #         if vlan_id > 0:
-    #             vlan_configs.append({
-    #                 'hostname': dev.get('hostname'),
-    #                 'vlan_name': dev.get('vlan_name'),
-    #                 'vlan_id': vlan_id,
-    #                 'access_ports': dev.get('access_ports', 'None'),
-    #                 'uplink_port': dev.get('uplink_port', 'None'),
-    #                 'core_trunk_port': dev.get('core_trunk_port', 'None'),
-    #             })
-    #     return vlan_configs
-
     def build_required_vlan_map(self):
         required_vlans= {device['hostname']: [] for device in self.devices}
 
         for switch in self.access_switches:
-            id = switch.get("vlan_id")
-            name = switch.get("vlan_name")
-            up_port = switch.get("uplink_port")
-            acc_ports = switch.get("access_ports")
-            trunk_port = switch.get("core_trunk_port")
+            vlan_id = switch.get("vlan_id")
+            vlan_name = switch.get("vlan_name")
+            uplink_port = switch.get("uplink_port")
+            access_ports = switch.get("access_ports")
+            core_trunk_port = switch.get("core_trunk_port")
 
-            acc_tuple = (id, name, up_port, acc_ports)
+            acc_tuple = (vlan_id, vlan_name, uplink_port, access_ports)
             required_vlans[switch['hostname']].append(acc_tuple)
 
-            agg_tuple = (id, name, trunk_port, "None")
+            agg_tuple = (vlan_id, vlan_name, core_trunk_port, "None")
             for agg in self.aggregate_switches:
                 required_vlans[agg['hostname']].append(agg_tuple)
         return required_vlans
-
 
     def __iter__(self):
         return iter(self.devices)
@@ -147,7 +131,7 @@ class BaseDriver(ABC):
         pass
 
     @abstractmethod
-    def get_create_service_account_cmds(self, username, password, access_level="admin"):
+    def get_create_account_cmd(self, username, password, access_level):
         pass
 
     @abstractmethod
@@ -180,7 +164,7 @@ class EXOSDriver(BaseDriver):
         tagged = "tagged" if tag else "untagged"
         return [f"configure vlan {vlan_name} add ports {ports_str} {tagged}"]
 
-    def get_create_service_account_cmds(self, username, password, access_level="admin"):
+    def get_create_account_cmd(self, username, password, access_level):
         return [
             f"create account {access_level} {username} {password}"
         ]
@@ -214,7 +198,7 @@ class CiscoDriver(BaseDriver):
     def get_add_vlan_ports_cmds(self, vlan_name, ports_str, tag: bool):
         return []
     
-    def get_create_service_account_cmds(
+    def get_create_account_cmd(
         self, username, password, access_level="admin"
     ):
         return [f"username {username} privilege 15 password {password}"]
@@ -312,8 +296,7 @@ class DeviceManager:
             )
             return output
         except Exception as e:
-            print(f"!!  ERROR: Configuration deployment fault on {self.hostname}.")
-            return f"!!  {e}"
+            print(f"!!  ERROR: Configuration deployment fault on {self.hostname}.\n!! {e}")
 
     def get_config(self):
         print(f"--  Getting configuration for {self.hostname}...")
@@ -355,9 +338,9 @@ class DeviceManager:
             )
         return not ("does not exist" in output.lower() or "error" in output.lower())
 
-    def create_service_account(self, username, password, access_level="admin"):
+    def create_account(self, username, password, access_level):
         print(f"--  Provisioning automation service account '{username}' on {self.hostname}...")
-        cmds = self.driver.get_create_service_account_cmds(username, password, access_level)
+        cmds = self.driver.get_create_account_cmd(username, password, access_level)
         return self.send_config(cmds)
 
     def save_config_primary(self):

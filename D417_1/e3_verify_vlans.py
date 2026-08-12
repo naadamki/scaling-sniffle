@@ -19,7 +19,6 @@ def main():
 
     args = parse_arguments()
     inventory = InventoryManager(args.inventory, args.closet)
-
     vlan_map = inventory.build_required_vlan_map()
     
     for device in inventory.devices:
@@ -28,8 +27,8 @@ def main():
             if isinstance(device, dict)
             else str(device)
         )
+
         required_vlans = vlan_map.get(hostname, [])
-        
         if not required_vlans:
             print(f"--  Skipping {hostname}: No required VLAN mappings found.")
             continue
@@ -40,10 +39,9 @@ def main():
             ) as connection:
 
                 current_vlans = connection.get_vlans(parse=True)
-
-                current_vlan_set = {(str(vlan.get("vid")), vlan.get("name")) for vlan in current_vlans}
-
+                current_vlan_set = {(str(vlan.get("vlan_id")), vlan.get("vlan_name")) for vlan in current_vlans}
                 verification_results = []
+
                 for required_vlan in required_vlans:
                     vlan_id, vlan_name, _, _ = required_vlan
                     
@@ -57,8 +55,7 @@ def main():
                     })
 
                 print(f"--  Verification Report for {connection.hostname} ({connection.host}):")
-                device_healthy = True
-                
+                device_healthy = True                
                 for result in verification_results:
                     if result["verified"]:
                         print(f"    - PASS: VLAN {result['vlan_name']} (ID: {result['vlan_id']}) is active.")

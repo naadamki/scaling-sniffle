@@ -27,19 +27,20 @@ def main():
             if isinstance(device, dict)
             else str(device)
         )
+
         try:
             with DeviceManager(
                 device, username=ENV_USER, password=ENV_PASS
             ) as connection:
+                
                 vlans = connection.get_vlans(parse=True)
-                print(f"--  {connection.hostname} ({connection.host}) VLAN configuration:")
 
+                print(f"--  {connection.hostname} ({connection.host}) VLAN configuration:")
                 for vlan in vlans:
                     print(f"    - {vlan['name']} ({vlan['vid']})")
 
         except Exception as e:
             print(f"!!  Process aborted for {hostname}\n!!  {e}")
-
 
     print(f"Success running {TITLE}!\n")
 

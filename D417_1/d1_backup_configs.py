@@ -12,12 +12,8 @@ TITLE = "network device configuration backup"
 def parse_arguments():
     # Handles terminal command line parameters explicitly.
     p = argparse.ArgumentParser(description=f"Script for {TITLE}.")
-    p.add_argument("-i", "--inventory", help="Building Block YAML inventory file.",
-        default="N-CoreA-01.yaml",
-    )
-    p.add_argument("-c", "--closet", help="Specific closet to inspect.",
-        default="Access_Closet_1",
-    )
+    p.add_argument("-i", "--inventory", help="Building Block YAML inventory file.",default="N-CoreA-01.yaml")
+    p.add_argument("-c", "--closet", help="Specific closet to inspect.", default="Access_Closet_1")
     return p.parse_args()
 
 def main():
@@ -25,7 +21,6 @@ def main():
 
     args = parse_arguments()
     inventory = InventoryManager(args.inventory, args.closet)
-
     output_file = "d1_backup_configs_output.ini"
     config = configparser.ConfigParser()
 
@@ -40,7 +35,9 @@ def main():
             with DeviceManager(
                 device, username=ENV_USER, password=ENV_PASS
             ) as connection:
+
                 configuration_output = connection.get_config()
+
                 if configuration_output:
                     config[connection.hostname] = {
                         "Hostname": connection.hostname,
