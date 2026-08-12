@@ -5,14 +5,19 @@
   
   tasks:
     - name: Provision Local-Admin account
-      ansible.netcommon.cli_config:
-        config:
-          - "create account admin Local-Admin WGU123"
-      register: account_result
-
-    - name: Save configuration to primary (handling overwrite prompt)
       ansible.netcommon.cli_command:
-        command: save configuration primary
+        command: "create account admin Local-Admin"
+        check_all: true
+        prompt:
+          - "(?i)enter password"
+          - "(?i)reenter password|enter password again"
+        answer:
+          - "WGU123"
+          - "WGU123"
+
+    - name: Save configuration to primary
+      ansible.netcommon.cli_command:
+        command: "save configuration primary"
         prompt:
           - "Do you want to save configuration to primary\\.cfg and overwrite it\\?"
         answer: 'y'
