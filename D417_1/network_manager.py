@@ -5,32 +5,38 @@ import re
 
 
 
+import re
+
 def parse_exos_show_vlan(raw_cli_output):
     vlan_list = []
+
     pattern = re.compile(
         r"^(?P<name>\S+)\s+"
         r"(?P<vid>\d+)\s+"
-        r"(?:(?P<ip>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+)?\s*"
-        r"(?:/(?P<mask>\d+)\s+)?\s*"
-        r"(?P<flags>[-a-zA-Z]{27})\s+"
         r"(?P<protocol>\S+)\s+"
-        r"(?P<active_ports>\d+)\s*/(?P<total_ports>\d+)\s+"
+        r"(?P<addr>\S+)\s+"          
+        r"(?P<flags>[\s\w!*gtbpmeuLGHU-]+?)\s+" 
+        r"(?P<active_ports>\d+)\s*/\s*(?P<total_ports>\d+)\s+"
         r"(?P<vr>\S+)",
         re.MULTILINE,
     )
-
+    
     for match in pattern.finditer(raw_cli_output):
-        vlan_data = match.groupdict()
-        if vlan_data["ip"] and vlan_data["mask"]:
-            vlan_data["ip_address"] = f"{vlan_data['ip']}/{vlan_data['mask']}"
-        else:
-            vlan_data["ip_address"] = None
-        del vlan_data["ip"]
-        del vlan_data["mask"]
-        vlan_list.append(vlan_data)
-
+        data = match.groupdict()
+        ip_addr = data["addr"]
+        if "-" in ip_addr:
+            ip_addr = None
+            
+        vlan_list.append({
+            "name": data["name"],
+            "vid": data["vid"],
+            "ip_address": ip_addr,
+            "active_ports": data["active_ports"],
+            "total_ports": data["total_ports"],
+            "vr": data["vr"]
+        })
+        
     return vlan_list
-
     # [
     #     {
     #         'name': 'Default', 
