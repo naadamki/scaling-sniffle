@@ -6,14 +6,7 @@
   tasks:
     - name: Provision Local-Admin account interactively
       ansible.netcommon.cli_command:
-        command: "create account admin Local-Admin"
-        check_all: true
-        prompt:
-          - "password:"
-          - "Reenter password:"
-        answer:
-          - "WGU123"
-          - "WGU123"
+        command: "create account admin Test1 WGU123"
 
     - name: Save configuration to primary
       ansible.netcommon.cli_command:
