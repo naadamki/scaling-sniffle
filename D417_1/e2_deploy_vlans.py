@@ -1,13 +1,11 @@
 import argparse
-import sys
 import os
-import yaml
-from network_manager import DeviceManager
+from network_manager import InventoryManager, DeviceManager
 
 ENV_USER = os.environ.get("SVC_USER", "netsvc")
-ENV_PASS = os.environ.get("SVC_PASS", "")
-TITLE = "automated VLAN deployment"
+ENV_PASS = os.environ.get("SVC_PASS", "SVC123")
 
+TITLE = "automated VLAN deployment"
 
 def parse_arguments():
     """Handles terminal command line parameters explicitly."""
@@ -16,74 +14,50 @@ def parse_arguments():
     p.add_argument("-c", "--closet", help="Specific closet to inspect.", default="Access_Closet_1")
     return p.parse_args()
 
-
-def load_inventory(inventory, closet):
-    try:
-        with open(inventory, "r") as f:
-            data = yaml.safe_load(f)
-        try:
-            return data["inventory"][closet]
-        except KeyError:
-            print(f"!!  {closet} not in {inventory}")
-            sys.exit(1)
-    except Exception as e:
-        print(f"!!  Failed to load inventory.")
-        print(f"!!  {e}")
-        sys.exit(1)
-
-
 def main():
     print(f"\nStarting {TITLE}...")
-    args = parse_arguments()
-    inventory = load_inventory(args.inventory, args.closet)
-    
-    acc_switches = [sw for sw in inventory if sw.get("role") == "access"]
-    agg_switch = next(sw for sw in inventory if sw.get("role") == "aggregate")
-    
-    print(f"--  Deploying VLAN configuration to aggregation ({agg_switch['hostname']})...")
-    
-    try:
-        with DeviceManager(agg_switch, username=ENV_USER, password=ENV_PASS) as agg:
-            for sw in acc_switches:
-                vlan_id = sw.get("vlan_id")
-                vlan_name = sw.get("vlan_name")
-                core_port = sw.get("core_trunk_port")
-                
-                if not agg.verify_vlan_exists(vlan_id, vlan_name):
-                    agg.create_vlan(vlan_id, vlan_name)
-                    
-                agg.add_vlan_ports(vlan_name, core_port, tag=True)
-                
-            agg.save_config_primary()
-            print(f"--  Aggregation core switch configured and saved successfully.")
-            
-    except Exception as e:
-        print(f"!!  Failed to provision Aggregate Core switch. Aborting.\n!!  {e}")
-        sys.exit(1)
 
-    print("\n--  Deploying access switch provisioning...")
-    for sw in acc_switches:
-        vlan_id = sw.get("vlan_id")
-        vlan_name = sw.get("vlan_name")
-        up_port = sw.get("uplink_port")
-        acc_ports = sw.get("access_ports")
-        
-        try:
-            with DeviceManager(sw, username=ENV_USER, password=ENV_PASS) as acc:
-                if not acc.verify_vlan_exists(vlan_id, vlan_name):
-                    acc.create_vlan(vlan_id, vlan_name)
-                    
-                acc.add_vlan_ports(vlan_name, up_port, tag=True)
-                acc.add_vlan_ports(vlan_name, acc_ports, tag=False)
-                acc.save_config_primary()
-                print(f"--  Access switch {sw['hostname']} provisioned successfully.")
-                
-        except Exception as e:
-            print(f"!!  Failed to provision access switch {sw.get('hostname')}.\n!!  {e}")
+    args = parse_arguments()
+    inventory = InventoryManager(args.inventory, args.closet)
+    
+    vlan_map = inventory.build_required_vlan_map()
+
+    for device in inventory.devices:
+        hostname = (
+            device.get("hostname") or device.get("host")
+            if isinstance(device, dict)
+            else str(device)
+        )        
+        targets_to_provision = vlan_map.get(hostname, [])
+
+        if not targets_to_provision:
+            print(f"-- Skipping {hostname}: No provisioning required.")
             continue
 
-    print(f"\nSuccess running {TITLE}!\n")
+        try:
+            with DeviceManager(
+                device, username=ENV_USER, password=ENV_PASS
+                ) as connection:
 
+                for vlan_id, vlan_name, tagged_ports, untagged_ports in targets_to_provision:
+
+                    if not connection.verify_vlan_exists(vlan_id=vlan_id, vlan_name=vlan_name):
+                        connection.create_vlan(vlan_id, vlan_name)
+                        print(f"--  {vlan_name} created on {hostname}.")
+                    else:
+                        print(f"--  {vlan_name} is on {hostname}.")
+
+                    if tagged_ports and tagged_ports != "None":
+                        connection.add_vlan_ports(vlan_name, tagged_ports, tag=True)
+
+                    if untagged_ports and untagged_ports != "None":
+                        connection.add_vlan_ports(vlan_name, untagged_ports, tag=False)
+
+                connection.save_config_primary()
+        except Exception as e:
+            print(f"!!  Process aborted for {hostname}\n!!  {e}")
+
+    print(f"\nSuccess running {TITLE}!\n")
 
 if __name__ == "__main__":
     main()
