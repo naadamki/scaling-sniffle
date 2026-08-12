@@ -112,9 +112,9 @@ def main():
 
                 # Output summary status based on overall device verification results
                 if device_healthy:
-                    print(f"    Status: All required VLANs verified successfully.")
+                    print(f"    - Status: All required VLANs verified successfully.")
                 else:
-                    print(f"    Status: Warning - Mismatched VLAN state detected.")
+                    print(f"    - Status: Warning - Mismatched VLAN state detected.")
                 
         except Exception as e:
             # Gracefully catch connection timeouts, authentication failures, or execution errors 
