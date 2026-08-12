@@ -4,13 +4,13 @@
   gather_facts: no
   
   tasks:
-    - name: Provision Local-Admin account
+    - name: Provision Local-Admin account interactively
       ansible.netcommon.cli_command:
         command: "create account admin Local-Admin"
         check_all: true
         prompt:
-          - "(?i)enter password"
-          - "(?i)reenter password|enter password again"
+          - "password:"
+          - "Reenter password:"
         answer:
           - "WGU123"
           - "WGU123"
