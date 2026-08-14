@@ -46,7 +46,7 @@ def main():
 
     args = parse_arguments()
     inventory = InventoryManager(args.inventory, args.closet)
-    output_file = "d1_backup_running_configs_output.ini"
+    output_file = "d1_running_configs_output.ini"
     config = configparser.ConfigParser()
 
     # Iterate sequentially through each network element in the inventory group

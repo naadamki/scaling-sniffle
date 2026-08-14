@@ -1,5 +1,5 @@
 ---
-- name: Create Account on EXOS Switches with defined access level
+- name: Create Account on EXOS switches with defined access level
   hosts: Access_Closet_1
   gather_facts: no
   vars_files:
@@ -16,3 +16,12 @@
         prompt:
           - "Do you want to save configuration to primary\\.cfg and overwrite it\\?"
         answer: 'y'
+
+    - name: Verify account was created successfully
+      ansible.netcommon.cli_command:
+        command: "show accounts"
+      register: verify_accounts
+
+    - name: Print account list to terminal screen
+      ansible.builtin.debug:
+        msg: "{{ verify_accounts.stdout }}"        
