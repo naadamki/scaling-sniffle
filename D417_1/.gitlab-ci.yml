@@ -1,0 +1,20 @@
+stages:
+  - python_automation
+
+default:
+  image: python:3.11-slim
+  before_script:
+    - echo "Setting up environment..."
+    - python3 -m pip install --upgrade pip
+    - pip install netmiko pyyaml
+
+run_python_scripts:
+  stage: python_automation
+  script:
+    - echo "Starting tasks..."
+    - python d1_backup_running_configs.py --inventory N-CoreA-01.yaml --closet Access_Closet_1
+    - python e1_identify_existing_vlans.py --inventory N-CoreA-01.yaml --closet Access_Closet_1
+    - python e2_provision_required_vlans.py --inventory N-CoreA-01.yaml --closet Access_Closet_1
+    - python e3_verify_provisioned_vlans.py --inventory N-CoreA-01.yaml --closet Access_Closet_1
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'

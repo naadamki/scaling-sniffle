@@ -1,7 +1,7 @@
 """
-Script Name: verify_vlan_deployment.py
+Script Name: verify_provisioned_vlans.py
 Purpose: Audits and verifies active VLAN deployment states against expected inventory 
-         specifications across targeted network devices in a building block closet.
+    specifications across targeted network devices in a building block closet.
 Target Environment: ExtremeXOS (EXOS) Switch Infrastructure
 Architecture Note: Leverages the custom 'network_manager' module 
     (network_manager.py) to handle low-level Netmiko connections, vendor driver strategy patterns, and safe context-managed execution lifecycles.

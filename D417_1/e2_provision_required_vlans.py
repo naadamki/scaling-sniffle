@@ -1,7 +1,7 @@
 """
-Script Name: deploy_vlans.py
+Script Name: provision_required_vlans.py
 Purpose: Automates the provisioning of required VLANs and port assignments across 
-         targeted network devices based on an inventory mapping file.
+    targeted network devices based on an inventory mapping file.
 Target Environment: ExtremeXOS (EXOS) Switch Infrastructure
 Architecture Note: Leverages the custom 'network_manager' module 
     (network_manager.py) to handle low-level Netmiko connections, vendor driver strategy patterns, and safe context-managed execution lifecycles.
@@ -100,7 +100,7 @@ def main():
         except Exception as e:
             # Gracefully catch connection timeouts, authentication failures, or execution errors 
             # to prevent the bulk script from crashing mid-run.
-            print(f"!!  Process aborted for {hostname}\n!!  Error details: {e}")
+            print(f"!!  Process aborted for {hostname}\n    {e}")
 
     print(f"\nSuccess running {TITLE}!\n")
 

@@ -1,7 +1,7 @@
-"""
+""" 
 Module Name: network_manager.py
-Purpose: Provides an object-oriented abstraction layer using the Strategy and
-    Factory design patterns for multi-vendor network device automation (Netmiko wrapper), inventory management, and structured CLI text parsing.
+Purpose: Provides an object-oriented abstraction layer using the Strategy and Factory design patterns 
+    for multi-vendor network device automation (Netmiko wrapper), inventory management, and structured CLI text parsing.
 Target Environment: ExtremeXOS (EXOS) and Cisco IOS Switch Infrastructure
 """
 
@@ -13,9 +13,8 @@ import re
 
 def parse_exos_show_vlan(raw_cli_output):
     """
-    Parses raw CLI text output from the ExtremeXOS 'show vlan' command using 
-    compiled regular expressions into a structured list of dictionaries.
-    """
+    Parses raw CLI text output from the ExtremeXOS 'show vlan' command using compiled regular expressions into a structured list of dictionaries.
+    """ 
     vlan_list = []
 
     # Compile regex pattern to match table rows of EXOS VLAN output columns
@@ -50,9 +49,8 @@ def parse_exos_show_vlan(raw_cli_output):
 
 
 class InventoryManager:
-    """
-    Manages loading, validation, and querying of building block network topologies 
-    and device inventories from structured YAML configuration files.
+    """    
+    Manages loading, validation, and querying of building block network topologies and device inventories from structured YAML configuration files.
     """
 
     def __init__(self, inventory_file, closet_name=None):
@@ -61,23 +59,23 @@ class InventoryManager:
         self.raw_data = self._load_yaml()
 
     def _load_yaml(self):
-        """Safely reads and loads the YAML inventory file into memory."""
+        # Safely reads and loads the YAML inventory file into memory.
         with open(self.inventory_file, 'r') as f:
             return yaml.safe_load(f)
 
     @property
     def building_name(self):
-        """Returns the building identifier string from inventory metadata."""
+        # Returns the building identifier string from inventory metadata.
         return self.raw_data.get('building_name', 'Unknown')
 
     @property
     def available_closets(self):
-        """Returns a list of all configured closet groups available in the inventory."""
+        # Returns a list of all configured closet groups available in the inventory.
         return list(self.raw_data.get('inventory', {}).keys())
 
     @property
     def devices(self):
-        """Retrieves the list of devices assigned to the active selected closet."""
+        # Retrieves the list of devices assigned to the active selected closet. 
         if not self.closet_name:
             raise ValueError("Closet name must be set before accessing devices.")
 
@@ -91,19 +89,16 @@ class InventoryManager:
 
     @property
     def aggregate_switches(self):
-        """Filters and returns core/aggregate role switches from the active closet."""
+        # Filters and returns core/aggregate role switches from the active closet. 
         return [dev for dev in self.devices if dev.get('role') == 'aggregate']
 
     @property
     def access_switches(self):
-        """Filters and returns access layer switches from the active closet."""
+        # Filters and returns access layer switches from the active closet. 
         return [dev for dev in self.devices if dev.get('role') == 'access']
 
     def build_required_vlan_map(self):
-        """
-        Builds a comprehensive mapping dictionary correlating each device hostname 
-        with its required VLAN IDs, names, and port assignments across access and core tiers.
-        """
+        # Builds a comprehensive mapping dictionary correlating each device hostname with its required VLAN IDs, names, and port assignments across access and core tiers.
         required_vlans = {device['hostname']: [] for device in self.devices}
 
         for switch in self.access_switches:
@@ -133,8 +128,7 @@ class InventoryManager:
 
 class BaseDriver(ABC):
     """
-    Abstract Base Class (Strategy Pattern interface) defining the mandatory command 
-    and parsing contract that vendor-specific network drivers must implement.
+    Abstract Base Class (Strategy Pattern interface) defining the mandatory command and parsing contract that vendor-specific network drivers must implement.
     """
 
     @abstractmethod
@@ -171,7 +165,9 @@ class BaseDriver(ABC):
 
 
 class EXOSDriver(BaseDriver):
-    """Concrete driver implementation providing ExtremeXOS-specific CLI command syntax and parsers."""
+    """
+    Concrete driver implementation providing ExtremeXOS-specific CLI command syntax and parsers.
+    """
 
     def get_config_cmd(self):
         return "show configuration"
@@ -201,7 +197,7 @@ class EXOSDriver(BaseDriver):
         ]
 
     def handle_save_config(self, connection):
-        """Handles vendor-specific interactive confirmation prompts when saving configuration state."""
+        # Handles vendor-specific interactive confirmation prompts when saving configuration state. 
         output = connection.send_command_timing("save configuration primary")
         if "save configuration to" in output.lower() or "(y/n)" in output.lower():
             output += connection.send_command_timing("y")
@@ -209,7 +205,9 @@ class EXOSDriver(BaseDriver):
 
 
 class CiscoDriver(BaseDriver):
-    """Concrete driver blueprint example providing Cisco IOS-specific syntax structures."""
+    """
+    Concrete driver blueprint example providing Cisco IOS-specific syntax structures.
+    """
 
     def get_config_cmd(self):
         return "show running-config"
@@ -240,9 +238,8 @@ class CiscoDriver(BaseDriver):
 
 class DeviceManager:
     """
-    Acts as a high-level wrapper around Netmiko and handles connection context 
-    lifecycles, parameter sanitization, and vendor-agnostic command execution.
-    """
+    Acts as a high-level wrapper around Netmiko and handles connection context lifecycles, parameter sanitization, and vendor-agnostic command execution.
+    """ 
     _DRIVERS = {"extreme_exos": EXOSDriver, "cisco_ios": CiscoDriver}
 
     def __init__(
@@ -274,7 +271,7 @@ class DeviceManager:
         self.connection = None
 
     def _get_valid_netmiko_params(self):
-        """Sanitizes and formats parameters specifically accepted by Netmiko's ConnectHandler."""
+        # Sanitizes and formats parameters specifically accepted by Netmiko's ConnectHandler. 
         netmiko_keys = {
             "host",
             "ip",
@@ -301,7 +298,7 @@ class DeviceManager:
         return clean_dict
 
     def __enter__(self):
-        """Context manager entry point: establishes the SSH/Telnet connection and initializes environment settings."""
+        # Context manager entry point: establishes the SSH/Telnet connection and initializes environment settings.
         clean_params = self._get_valid_netmiko_params()
         try:
             print(f">>  Connecting to {self.host} ({self.device_type})...")
@@ -316,19 +313,19 @@ class DeviceManager:
             raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit point: guarantees socket cleanup and graceful disconnection."""
+        # Context manager exit point: guarantees socket cleanup and graceful disconnection.
         if self.connection:
             print(f"<<  Disconnecting from {self.host}.\n")            
             self.connection.disconnect()
         return False
 
     def send_cmd(self, command, **kwargs):
-        """Sends a generic raw command to the active device session."""
+        # Sends a generic raw command to the active device session. 
         print(f"--  Sending command to {self.hostname}...")
         return self.connection.send_command(command, **kwargs)
 
     def send_config(self, commands):
-        """Sends a set of configuration commands using the active driver context."""
+        # Sends a set of configuration commands using the active driver context. 
         if not commands:
             print(f"--  No commands provided for execution on {self.hostname}.")
             return ""
@@ -342,12 +339,12 @@ class DeviceManager:
             print(f"!!  ERROR: Configuration deployment fault on {self.hostname}.\n!! {e}")
 
     def get_config(self):
-        """Retrieves raw configuration data using the vendor-specific driver command."""
+        # Retrieves raw configuration data using the vendor-specific driver command.
         print(f"--  Getting configuration for {self.hostname}...")
         return self.connection.send_command(self.driver.get_config_cmd())
 
     def get_vlans(self, parse=True):
-        """Retrieves VLAN state data, optionally parsing raw text output into structured dictionaries."""
+        # Retrieves VLAN state data, optionally parsing raw text output into structured dictionaries.
         print(f"--  Getting VLAN configuration for {self.hostname}...")
         cmd = self.driver.get_vlans_cmd()
         raw_output = self.connection.send_command(cmd)
@@ -357,13 +354,13 @@ class DeviceManager:
         return raw_output
 
     def create_vlan(self, vlan_id, vlan_name):
-        """Provisions a new VLAN ID and name on the target switch."""
+        # Provisions a new VLAN ID and name on the target switch. 
         print(f"--  Creating VLAN {vlan_name} ({vlan_id}) on {self.hostname}...")
         cmds = self.driver.get_create_vlan_cmds(vlan_id, vlan_name)
         return self.send_config(cmds)
 
     def add_vlan_ports(self, vlan_name, ports, tag=True):
-        """Assigns tagged or untagged port lists to an existing VLAN."""
+        # Assigns tagged or untagged port lists to an existing VLAN.
         ports_str = (
             ",".join(map(str, ports))
             if isinstance(ports, list)
@@ -376,7 +373,7 @@ class DeviceManager:
         return self.send_config(cmds)
 
     def verify_vlan_exists(self, vlan_id=None, vlan_name=None) -> bool:
-        """Verifies whether a specific VLAN identifier exists on the target switch."""
+        # Verifies whether a specific VLAN identifier exists on the target switch. 
         identifier = str(vlan_id) if vlan_id is not None else vlan_name
         if not identifier:
             raise ValueError("Must provide either vlan_id or vlan_name to verify.")
@@ -387,12 +384,12 @@ class DeviceManager:
         return not ("does not exist" in output.lower() or "error" in output.lower())
 
     def create_account(self, username, password, access_level):
-        """Provisions an administrative or service account on the network device."""
+        # Provisions an administrative or service account on the network device. 
         print(f"--  Provisioning automation service account '{username}' on {self.hostname}...")
         cmds = self.driver.get_create_account_cmd(username, password, access_level)
         return self.send_config(cmds)
 
     def save_config_primary(self):
-        """Commits running configuration changes to non-volatile primary storage."""
+        # Commits running configuration changes to non-volatile primary storage. 
         print(f"--  Saving configuration for {self.hostname}...")
         return self.driver.handle_save_config(self.connection)
