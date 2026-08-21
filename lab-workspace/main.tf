@@ -29,8 +29,20 @@ data "aws_subnets" "lab_subnets" {
   }
 }
 
-data "aws_ssm_parameter" "ubuntu_24_04" {
-  name = "/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id"
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["099720109477"] # Canonical's official AWS account ID
 }
 
 data "aws_ami" "rhel_10" {
