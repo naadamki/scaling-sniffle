@@ -1,0 +1,16 @@
+---
+- hosts: all
+  gather_facts: true
+  become: true
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: Ensure {{ username }} with root privileges exists
+      ansible.builtin.user:
+        name: "{{ username }}"
+        password: "{{ password | password_hash('sha512') }}"
+        shell: /bin/bash
+        create_home: yes
+        groups: "{{ 'sudo' if ansible_os_family == 'Debian' else 'wheel' }}"
+        append: yes
+        state: present

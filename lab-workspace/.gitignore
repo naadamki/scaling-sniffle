@@ -1,0 +1,16 @@
+# Local Terraform state and cache files
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# Sensitive variable files
+*.tfvars
+
+# Private keys and credentials
+*.pem
+*.key
+.env
+
+# Ansible temporary files
+*.retry

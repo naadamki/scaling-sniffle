@@ -1,0 +1,109 @@
+# 1. Initialize environment & credentials
+touch .gitignore
+
+export AWS_ACCESS_KEY_ID="<lab_key>"
+export AWS_SECRET_ACCESS_KEY="<lab_secret>"
+
+# Pull the lab's SSH key name automatically
+export TF_VAR_ssh_key_name=$(aws ec2 describe-key-pairs --query "KeyPairs[0].KeyName" --output text)
+
+# [Action Required]: Download private key from the lab portal into this directory
+chmod 400 ${TF_VAR_ssh_key_name}.pem
+
+may have to create key pair: ssh-keygen -t rsa -b 2048 -f ~/.ssh/<your_key_name>
+
+# 2. Create project files (Terraform & Ansible structure)
+touch terraform.tfvars variables.tf main.tf outputs.tf
+touch vars.yml playbook.yml
+
+# 3. Secure Ansible variables
+ansible-vault encrypt vars.yml
+
+# --- (Write code into .tf and .yml files here) ---
+
+git commit -m 'B: SERVER REQUIREMENTS'
+
+# 4. Terraform lifecycle
+terraform init
+terraform validate
+terraform plan
+
+
+screenshot after X2
+terraform apply -auto-approve
+
+screenshot 'c_terraform_ubuntu_screenshot'
+cp main.tf c_terraform_ubuntu_script.txt
+
+git commit -m 'C: IAC AND TERRAFORM - UBUNTU'
+
+screenshot 'd_terraform_redhat_screenshot'
+cp main.tf d_terraform_redhat_script.txt
+
+git commit -m 'D: IAC AND TERRAFORM - RED HAT'
+
+# 5. Ansible pre-flight checks (now that files and servers exist)
+ansible-playbook --syntax-check playbook.yml
+ansible-playbook --check playbook.yml --ask-vault-pass -i inventory.ini
+
+# 6. Execute the playbook
+screenshot after
+ansible-playbook playbook.yml -i inventory.ini --private-key=${TF_VAR_ssh_key_name}.pem --ask-vault-pass
+
+screenshot 'e1_ansible_account_screenshot'
+cp playbook.yml e1_ansible_account_script.txt
+
+# 7. Validation / Verification ad-hoc commands
+ansible all -m ping -i inventory.ini --private-key=${TF_VAR_ssh_key_name}.pem 
+ansible all -m shell -a "id <username>" -i inventory.ini --private-key=${TF_VAR_ssh_key_name}.pem --become --ask-vault-pass
+
+git commit -m 'E1: AUTOMATION SOLUTION: ANSIBLE'
+
+copy files to other repo for CI/CD
+screenshot of repo
+
+git commit -m 'E2: AUTOMATION SOLUTION DOCUMENTATION'
+
+
+
+url of main repo:
+url of cicd repo:
+
+
+
+# !! FALLBACK
+terraform destroy 
+ansible all -m user -a "name=<username> state=absent remove=yes" -i inventory.ini --private-key=${TF_VAR_ssh_key_name}.pem --become   
+
+
+
+
+
+
+
+
+
+
+
+VALIDATE
+terraform validate
+terraform plan
+ansible-playbook --syntax-check playbook.yml
+ansible-playbook --check playbook.yml
+
+TESTING
+ansible all -m ping -i inventory.ini --private-key=${TF_VAR_ssh_key_name}.pem 
+ansible all -m shell -a "id AdminWGU" -i inventory.ini --private-key=${TF_VAR_ssh_key_name}.pem --become
+
+
+
+
+
+
+Phase 3: Troubleshooting Steps to Record (Even if simulated!)
+
+Issue 1 (Anticipated Subnet/IP Error): Realizing that a custom VPC doesn't automatically assign public IPs, and resolving it by adding associate_public_ip_address = true to your aws_instance blocks.
+
+Issue 2 (Permission/Key Path Error): Verifying that your private key file has the correct local file permissions (e.g., running chmod 400 vockey.pem if Ansible throws a "permissions are too open" warning).
+
+Issue 3 (SSH Timeout / Security Group): Confirming that port 22 inbound was explicitly permitted in your security group resource so Ansible wouldn't timeout trying to connect.
