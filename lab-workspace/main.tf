@@ -13,12 +13,8 @@ provider "aws" {
 
 data "aws_caller_identity" "current" {}
 
-output "account_id" {
-  value = data.aws_caller_identity.current.account_id
-}
-
 # Query the pre-existing 'cloudacademylabs' VPC
-data "aws_vpc" "lab_vpc" {
+data "aws_vpc" "labs_vpc" {
   filter {
     name   = "tag:Name"
     values = ["cloudacademylabs"]
@@ -29,15 +25,36 @@ data "aws_vpc" "lab_vpc" {
 data "aws_subnets" "lab_subnets" {
   filter {
     name   = "vpc-id"
-    values = [data.aws_vpc.lab_vpc.id]
+    values = [data.aws_vpc.labs_vpc.id]
   }
 }
+
+data "aws_ssm_parameter" "ubuntu_24_04" {
+  name = "/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id"
+}
+
+data "aws_ami" "rhel_10" {
+  most_recent = true
+  owners      = ["309956199498"] # Red Hat's official AWS account ID
+
+  filter {
+    name   = "name"
+    values = ["RHEL-10*_HVM-*-x86_64-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+
 
 # Security Group for Ansible SSH
 resource "aws_security_group" "ssh_allow" {
   name        = "allow_ssh_cloudacademy"
   description = "Allow SSH inbound traffic for Ansible"
-  vpc_id      = data.aws_vpc.lab_vpc.id
+  vpc_id      = data.aws_vpc.labs_vpc.id
 
   ingress {
     description      = "SSH"
@@ -56,31 +73,33 @@ resource "aws_security_group" "ssh_allow" {
   }
 }
 
+
+
 # Ubuntu Node
 resource "aws_instance" "ubuntu_server" {
-  ami                         = "ami-0360c520857e3138f"
-  instance_type               = "t2.micro"
+  ami                         = data.aws_ssm_parameter.ubuntu_24_04.value  
+  instance_type               = var.instance_type
   key_name                    = var.ssh_key_name
   vpc_security_group_ids      = [aws_security_group.ssh_allow.id]
   subnet_id                   = data.aws_subnets.lab_subnets.ids[0]
   associate_public_ip_address = true
 
   tags = {
-    Name = "Ubuntu-Lab-Node"
+    Name = "Ubuntu-Server"
   }
 }
 
 # RHEL Node
 resource "aws_instance" "rhel_server" {
-  ami                         = "ami-0fd3ac4abb734302a"
-  instance_type               = "t2.micro"
+  ami                         = data.aws_ami.rhel_10.id
+  instance_type               = var.instance_type
   key_name                    = var.ssh_key_name
   vpc_security_group_ids      = [aws_security_group.ssh_allow.id]
   subnet_id                   = data.aws_subnets.lab_subnets.ids[0]
   associate_public_ip_address = true
 
   tags = {
-    Name = "RHEL-Lab-Node"
+    Name = "RHEL-Server"
   }
 }
 
