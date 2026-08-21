@@ -14,7 +14,7 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 # Query the pre-existing 'cloudacademylabs' VPC
-data "aws_vpc" "labs_vpc" {
+data "aws_vpc" "lab_vpc" {
   filter {
     name   = "tag:Name"
     values = ["cloudacademylabs"]
@@ -25,7 +25,7 @@ data "aws_vpc" "labs_vpc" {
 data "aws_subnets" "lab_subnets" {
   filter {
     name   = "vpc-id"
-    values = [data.aws_vpc.labs_vpc.id]
+    values = [data.aws_vpc.lab_vpc.id]
   }
 }
 
@@ -54,7 +54,7 @@ data "aws_ami" "rhel_10" {
 resource "aws_security_group" "ssh_allow" {
   name        = "allow_ssh_cloudacademy"
   description = "Allow SSH inbound traffic for Ansible"
-  vpc_id      = data.aws_vpc.labs_vpc.id
+  vpc_id      = data.aws_vpc.lab_vpc.id
 
   ingress {
     description      = "SSH"
