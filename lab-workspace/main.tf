@@ -89,7 +89,7 @@ resource "aws_security_group" "ssh_allow" {
 
 # Ubuntu Node
 resource "aws_instance" "ubuntu_server" {
-  ami                         = data.aws_ami.ubuntu_24_04.value  
+  ami                         = data.aws_ami.ubuntu_24_04.id  
   instance_type               = var.instance_type
   key_name                    = var.ssh_key_name
   vpc_security_group_ids      = [aws_security_group.ssh_allow.id]
