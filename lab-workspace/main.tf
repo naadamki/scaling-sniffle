@@ -119,10 +119,10 @@ resource "aws_instance" "rhel_server" {
 resource "local_file" "ansible_inventory" {
   content  = <<-EOT
     [ubuntu_nodes]
-    ${aws_instance.ubuntu_server.public_ip} ansible_user=ubuntu ansible_ssh_private_key_file=${var.ssh_key_name}.pem
+    ${aws_instance.ubuntu_server.public_ip} ansible_user=ubuntu ansible_private_key_file=${path.module}/${var.ssh_key_name}.pem
 
     [rhel_nodes]
-    ${aws_instance.rhel_server.public_ip} ansible_user=ec2-user ansible_ssh_private_key_file=${var.ssh_key_name}.pem
+    ${aws_instance.rhel_server.public_ip} ansible_user=ec2-user ansible_private_key_file=${path.module}/${var.ssh_key_name}.pem
 
     [all:vars]
     ansible_python_interpreter=/usr/bin/python3
