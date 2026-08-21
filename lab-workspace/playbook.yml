@@ -8,7 +8,7 @@
     - name: Ensure {{ username }} with root privileges exists
       ansible.builtin.user:
         name: "{{ username }}"
-        password: "{{ password | password_hash('sha512') }}"
+        password: "{{ secure_password_hash }}"
         shell: /bin/bash
         create_home: yes
         groups: "{{ 'sudo' if ansible_os_family == 'Debian' else 'wheel' }}"
